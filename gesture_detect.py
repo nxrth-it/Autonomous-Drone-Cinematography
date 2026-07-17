@@ -40,13 +40,14 @@ while True:
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
     
-    # Send to AI
+    #recognizing the gesture using MP's model
     recognizer.recognize_async(mp_image, timestamp_ms)
 
     # --- 3. DRAW AND PRINT RESULTS ---
-    if latest_result and latest_result.gestures and latest_result.hand_landmarks:
+    if latest_result and latest_result.gestures and latest_result.hand_landmarks: #make sure hand has been detected and model has returned a result.
+        #extract the gesture the model is most confident about from the first hand.
+        gesture_name = latest_result.gestures[0][0].category_name 
         #Display the detected gesture name on the frame
-        gesture_name = latest_result.gestures[0][0].category_name
         cv2.putText(frame, f"Gesture: {gesture_name}", (10, 50), 
                     cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
@@ -59,7 +60,8 @@ while True:
                 mp_drawing_styles.get_default_hand_landmarks_style(),
                 mp_drawing_styles.get_default_hand_connections_style()
             )
-
+            
+    #show camera feed with the detected gesture and hand skeleton
     cv2.imshow('Camera Feed', frame)
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
