@@ -7,7 +7,7 @@ d = drone(enable_mission_pad=False, show_cam=True)
 if not getattr(d, "is_connected", False):
     raise SystemExit("Drone connection failed. Turn on the Tello and connect to its Wi-Fi network before running this script.")
 
-# Movement
+# Showcase of basic Movement
 d.takeoff()
 d.move_up(30)
 d.move_forward(50)
