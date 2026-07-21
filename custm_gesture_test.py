@@ -19,7 +19,7 @@ TASK_FILE = 'hand_landmarker.task'
 
 # Verify custom gesture model exists
 if not os.path.exists(MODEL_PATH) or not os.path.exists(LABEL_PATH):
-    print("❌ ERROR: Custom model or labels missing. Run 'train_coordinate_model.py' first.")
+    print("ERROR: Custom model or labels missing. Run 'train_coordinate_model.py' first.")
     exit()
 
 # Automatically fetch MediaPipe landmarker asset if missing
@@ -28,9 +28,9 @@ if not os.path.exists(TASK_FILE):
     url = "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/latest/hand_landmarker.task"
     try:
         urllib.request.urlretrieve(url, TASK_FILE)
-        print("✅ Download finished.")
+        print("Download finished.")
     except Exception as e:
-        print(f"❌ Failed to download model: {e}")
+        print(f"Failed to download model: {e}")
         exit()
 
 # Load classification labels and custom trained model
