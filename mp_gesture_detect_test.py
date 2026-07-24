@@ -9,8 +9,8 @@ mp_drawing = mp.tasks.vision.drawing_utils
 mp_drawing_styles = mp.tasks.vision.drawing_styles
 mp_hands_connections = mp.tasks.vision.HandLandmarksConnections
 
-# --- 1. SETUP GESTURE RECOGNIZER ---
-# Ensure you have 'gesture_recognizer.task' in the same folder as this script
+#SETUP MEDIAPIPE GESTURE RECOGNIZER ---
+# Ensure have 'gesture_recognizer.task' in the same folder as this script
 base_options = python.BaseOptions(model_asset_path='gesture_recognizer.task')
 options = vision.GestureRecognizerOptions(
     base_options=base_options,
@@ -43,7 +43,7 @@ while True:
     #recognizing the gesture using MP's model
     recognizer.recognize_async(mp_image, timestamp_ms)
 
-    # --- 3. DRAW AND PRINT RESULTS ---
+    # --- DRAW AND PRINT RESULTS ---
     if latest_result and latest_result.gestures and latest_result.hand_landmarks: #make sure hand has been detected and model has returned a result.
         #extract the gesture the model is most confident about from the first hand.
         gesture_name = latest_result.gestures[0][0].category_name 
