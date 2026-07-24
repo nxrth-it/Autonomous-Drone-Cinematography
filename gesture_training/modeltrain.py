@@ -30,7 +30,7 @@ with open('label_classes.pkl', 'wb') as f:
     pickle.dump(label_encoder.classes_, f)
 print(f"Target classes identified: {label_encoder.classes_}")
 
-# --- CRITICAL BUG FIX: ONE-HOT ENCODING FOR MULTI-LABEL SIGMOID ---
+
 # To train independent Sigmoid neurons, we convert our integer targets to one-hot vectors
 y_one_hot = tf.keras.utils.to_categorical(y_encoded, num_classes=NUM_CLASSES)
 
@@ -39,22 +39,25 @@ X_train, X_test, y_train, y_test = train_test_split(X, y_one_hot, test_size=0.2,
 
 # Build deep feed-forward coordinate model
 model = tf.keras.models.Sequential([
+    #batch normalization is not needed between layers because network is very shallow and data is quite stable.
+
     tf.keras.layers.Input(shape=(63,)),
     
     tf.keras.layers.Dense(128, activation='relu'), #relu is for hidden layers.
     tf.keras.layers.Dropout(0.2),
     
     tf.keras.layers.Dense(64, activation='relu'),
-    tf.keras.layers.Dropout(0.1),
+    tf.keras.layers.Dropout(0.4),
     
     # Use 'sigmoid' instead of 'softmax' so output scores are independent (0 to 1)
-    tf.keras.layers.Dense(NUM_CLASSES, activation='sigmoid')
+    #adding another "undefined gesture" and training model for it instead of switching completely to sigmoid due to it not working well enough.
+    tf.keras.layers.Dense(NUM_CLASSES, activation='softmax')
 ])
 
-# Use binary_crossentropy because each class output behaves as an independent binary decision
+# Use categorical_crossentropy for multi-class classification
 model.compile(
     optimizer='adam', #best optimizer
-    loss='binary_crossentropy', #used for only binary classification where targets are between 0 and 1.
+    loss='categorical_crossentropy', #used for multi-class classification
     metrics=['accuracy']
 )
 
