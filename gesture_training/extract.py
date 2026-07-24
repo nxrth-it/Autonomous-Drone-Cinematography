@@ -7,30 +7,62 @@ import csv
 import math
 import urllib.request
 
+# import mediapipe drawing utilities for hand skeleton rendering
+from mediapipe.tasks.python.vision import drawing_utils
+from mediapipe.tasks.python.vision import HandLandmarksConnections
+from mediapipe.tasks.python.vision import drawing_styles
+
+# ==============================================================================
+# FILE PATHS & SETUP CONFIGURATION
+# ==============================================================================
+
+# Output file where recorded gesture coordinate dataset will be saved
 CSV_FILE_NAME = "hand_dataset.csv"
-MODEL_PATH = "hand_landmarker.task"
+
+# Get the directory of the current script, then point to the central models folder
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+MODELS_DIR = os.path.join(BASE_DIR, "models")
+os.makedirs(MODELS_DIR, exist_ok=True) # Ensure models directory exists
+
+# MediaPipe Hand Landmarker Task file path (used for 3D hand skeleton tracking)
+TASK_MODEL_PATH = os.path.join(MODELS_DIR, "hand_landmarker.task")
+
+# incase cannot find locally.
 MODEL_URL = "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task"
 
 # To keep the setup fully automated, we download the required Tasks file if it doesn't exist
-if not os.path.exists(MODEL_PATH):
+if not os.path.exists(TASK_MODEL_PATH):
     print("=" * 60)
-    print(f"Model file '{MODEL_PATH}' not found locally.")
+    print(f"Model file '{TASK_MODEL_PATH}' not found locally.")
     print("Downloading the official MediaPipe Hand Landmarker Task asset...")
     print("Please wait, this will only happen once...")
     try:
-        urllib.request.urlretrieve(MODEL_URL, MODEL_PATH)
+        urllib.request.urlretrieve(MODEL_URL, TASK_MODEL_PATH)
         print("Download complete. Proceeding with detector setup...")
         print("=" * 60)
     except Exception as e:
         print(f"ERROR: Failed to download model file. Details: {e}")
         exit()
 
+
+# ==============================================================================
+# MEDIAPIPE TASKS DETECTOR INITIALIZATION
+# ==============================================================================
+
 # Set up options for the modern MediaPipe Tasks pipeline
-base_options = python.BaseOptions(model_asset_path=MODEL_PATH)
+# base_options = python.BaseOptions(model_asset_path=TASK_MODEL_PATH)
+# options = vision.HandLandmarkerOptions(
+#     base_options=base_options,
+#     num_hands=1,                         # Single hand focus
+#     min_hand_detection_confidence=0.7    # High threshold for high training confidence
+# )
+base_options = python.BaseOptions(model_asset_path=TASK_MODEL_PATH)
 options = vision.HandLandmarkerOptions(
     base_options=base_options,
-    num_hands=1,                         # Single hand focus
-    min_hand_detection_confidence=0.7    # High threshold for high training confidence
+    num_hands=1,                          # Single hand focus to keep control clean
+    min_hand_detection_confidence=0.7,    # High threshold for high training confidence
+    min_hand_presence_confidence=0.5,
+    running_mode=vision.RunningMode.IMAGE # Synchronous image mode for precise frame processing
 )
 
 # Initialize the detector
@@ -44,6 +76,11 @@ HAND_CONNECTIONS = [
     (9, 13), (13, 14), (14, 15), (15, 16), # Ring
     (13, 17), (0, 17), (17, 18), (18, 19), (19, 20) # Pinky
 ]
+
+
+# ==============================================================================
+# DATASET HEADER & CSV INITIALIZATION
+# ==============================================================================
 
 # 21 hand landmarks, each containing 3 coordinates (x, y, z)
 header = ['label']
@@ -59,6 +96,11 @@ if not file_exists:
     print(f"Created new coordinate dataset file: '{CSV_FILE_NAME}'")
 else:
     print(f"Existing dataset found. New records will append to '{CSV_FILE_NAME}'")
+
+
+# ==============================================================================
+# WEBCAM INTERACTION & USER PROMPT
+# ==============================================================================
 
 cap = cv2.VideoCapture(0)
 if not cap.isOpened():
@@ -76,12 +118,29 @@ recorded_count = 0
 is_recording = False
 was_r_pressed = False
 
+# Memory buffer to hold frames before writing to disk in batches (prevents I/O lag)
+data_buffer = []
+
 print(f"\nTarget gesture set to: '{current_label}'")
 print("\nCOMMANDS:")
 print("  - Press 'R' : Toggle recording on/off")
 print("  - Press 'N' : Change the target gesture label")
 print("  - Press 'Q' : Quit and save")
 print("="*50 + "\n")
+
+def flush_buffer():
+    """Flushes buffered coordinate rows to the CSV file to prevent frame stutters."""
+    if not data_buffer:
+        return
+    with open(CSV_FILE_NAME, mode='a', newline='') as f:
+        csv_writer = csv.writer(f)
+        csv_writer.writerows(data_buffer)
+    data_buffer.clear()
+
+
+# ==============================================================================
+# MAIN REAL-TIME COLLECTION LOOP
+# ==============================================================================
 
 while cap.isOpened():
     success, frame = cap.read()
@@ -103,10 +162,14 @@ while cap.isOpened():
     # Track if we are currently recording this frame
     key = cv2.waitKey(1) & 0xFF
 
-    #logic to handle keyboard inputs
+    # logic to handle keyboard inputs
     if key == ord('q') or key == ord('Q'):
+        # Flush any remaining frames in buffer before exiting
+        flush_buffer()
         break
     elif key == ord('n') or key == ord('N'):
+        # Flush memory buffer to CSV file before switching label
+        flush_buffer()
         # Switch to a new class
         print(f"\nFinished recording '{current_label}'. Captured {recorded_count} frames.")
         new_label = input("Enter the new gesture name: ").strip()
@@ -119,25 +182,30 @@ while cap.isOpened():
     is_r_key = key == ord('r') or key == ord('R')
     if is_r_key and not was_r_pressed:
         is_recording = not is_recording
-        print("Recording enabled." if is_recording else "Recording disabled.")
+        if not is_recording:
+            # Save data to disk immediately when recording pauses
+            flush_buffer()
+            print("Recording disabled and data saved to CSV.")
+        else:
+            print("Recording enabled.")
     was_r_pressed = is_r_key
 
+    # Process hand landmark results
     if results.hand_landmarks:
         for hand_landmarks in results.hand_landmarks:
-            # 1. Manual Skeletal Drawing (to ensure compatibility without drawing_utils)
-            for connection in HAND_CONNECTIONS:
-                start_idx, end_idx = connection
-                pt1 = (int(hand_landmarks[start_idx].x * w), int(hand_landmarks[start_idx].y * h))
-                pt2 = (int(hand_landmarks[end_idx].x * w), int(hand_landmarks[end_idx].y * h))
-                cv2.line(frame, pt1, pt2, (0, 255, 0), 2)
+            # Use official Tasks API drawing utilities to draw hand skeleton on the frame
+            drawing_utils.draw_landmarks(
+                frame,
+                hand_landmarks,
+                HandLandmarksConnections.HAND_CONNECTIONS,
+                drawing_styles.get_default_hand_landmarks_style(),
+                drawing_styles.get_default_hand_connections_style()
+            )
 
-            for lm in hand_landmarks:
-                cx, cy = int(lm.x * w), int(lm.y * h)
-                cv2.circle(frame, (cx, cy), 5, (0, 0, 255), cv2.FILLED)
-
-            # 2. Extract and Normalize Coordinates
+            # Extract and Normalize Coordinates
             if is_recording:
-                # Translation Invariance: Center coordinates relative to the wrist (landmark 0)
+                # Translation Invariance: Center coordinates relative to the wrist (landmark 0) 
+                # (normalized so position of gesture in frame doesn't get taken into account.)
                 wrist_x = hand_landmarks[0].x
                 wrist_y = hand_landmarks[0].y
                 wrist_z = hand_landmarks[0].z
@@ -150,7 +218,8 @@ while cap.isOpened():
                         landmark.z - wrist_z
                     ])
 
-                # Scale Invariance: Divide by the maximum Euclidean span of the hand
+                # Scale Invariance: Divide by the maximum Euclidean span of the hand 
+                # so model will learn from hand geometry instead of percieving size.
                 max_dist = 0.0
                 for coord in temp_coords:
                     dist = math.sqrt(coord[0]**2 + coord[1]**2 + coord[2]**2)
@@ -165,16 +234,11 @@ while cap.isOpened():
                 for coord in temp_coords:
                     row.extend([coord[0] / max_dist, coord[1] / max_dist, coord[2] / max_dist])
 
-                # Write to local CSV
-                with open(CSV_FILE_NAME, mode='a', newline='') as f:
-                    csv_writer = csv.writer(f)
-                    csv_writer.writerow(row)
-
+                # Append to buffer in memory
+                data_buffer.append(row)
                 recorded_count += 1
 
-
-    # Show the interactive frame window
-    cv2.imshow("Gesture Coordinate Collector (Tasks API)", frame)
+    # Render on-screen HUD status overlay
     status_text = "RECORDING" if is_recording else "IDLE"
     status_color = (0, 0, 255) if is_recording else (0, 255, 0)
     
@@ -186,6 +250,10 @@ while cap.isOpened():
 
     # Show the interactive frame window
     cv2.imshow("Gesture Coordinate Collector (Tasks API)", frame)
+
+# ==============================================================================
+# 6. SHUTDOWN & CLEANUP
+# ==============================================================================
 
 cap.release()
 cv2.destroyAllWindows()

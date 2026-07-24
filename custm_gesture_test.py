@@ -13,9 +13,9 @@ from mediapipe.tasks.python.vision import drawing_utils
 from mediapipe.tasks.python.vision import HandLandmarksConnections
 from mediapipe.tasks.python.vision import drawing_styles
 
-MODEL_PATH = 'gesture_coordinate_model.keras'
+MODEL_PATH = 'models/gesture_coordinate_model.keras'
 LABEL_PATH = 'label_classes.pkl'
-TASK_FILE = 'hand_landmarker.task'
+TASK_FILE = 'models/hand_landmarker.task'
 
 # Verify custom gesture model exists
 if not os.path.exists(MODEL_PATH) or not os.path.exists(LABEL_PATH):
@@ -67,7 +67,7 @@ while cap.isOpened():
     if detection_result.hand_landmarks:
         for hand_landmarks in detection_result.hand_landmarks:
             
-            # Use official Tasks API drawing utilities for standard aesthetic rendering
+            # Use official Tasks API drawing utilities to draw hand skeleton on the frame
             drawing_utils.draw_landmarks(
                 frame,
                 hand_landmarks,
@@ -76,16 +76,16 @@ while cap.isOpened():
                 drawing_styles.get_default_hand_connections_style()
             )
 
-            # Translation Invariance: Shift coordinates relative to wrist origin
+            # Translation Invariance: Shift coordinates relative to wrist origin (normalized so position of gesture in frame doesn't get taken into account.)
             wrist = hand_landmarks[0]
             raw_points = []
             for lm in hand_landmarks:
                 raw_points.append([lm.x - wrist.x, lm.y - wrist.y, lm.z - wrist.z])
             
-            # Scale Invariance: Calculate max coordinate reach and normalize size
+            # Scale Invariance: Calculate max coordinate reach and normalize size so model will look at hand geometry instead of percieving size.
             distances = [np.linalg.norm(pt) for pt in raw_points]
             max_dist = max(distances)
-            if max_dist == 0:
+            if max_dist == 0: #prevent division by zero if all points are at the wrist
                 max_dist = 1.0
             
             # Normalize and structure into flat feature vector
