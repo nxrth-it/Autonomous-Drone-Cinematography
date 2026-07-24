@@ -28,7 +28,7 @@ if not os.path.exists(MODEL_PATH) or not os.path.exists(LABEL_PATH):
 # Load local model and labels
 model = tf.keras.models.load_model(MODEL_PATH)
 with open(LABEL_PATH, 'rb') as f:
-    classes = pickle.load(f)
+    classes = pickle.load(f) #map model's numeric output to text labels
 
 
 

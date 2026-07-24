@@ -27,7 +27,7 @@ NUM_CLASSES = len(label_encoder.classes_)
 
 # Save class mappings
 with open('label_classes.pkl', 'wb') as f:
-    pickle.dump(label_encoder.classes_, f)
+    pickle.dump(label_encoder.classes_, f) #save python file by serializing it into a binary file on disk.
 print(f"Target classes identified: {label_encoder.classes_}")
 
 
