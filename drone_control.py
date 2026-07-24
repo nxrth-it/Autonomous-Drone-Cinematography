@@ -24,7 +24,7 @@ if not os.path.exists(MODEL_PATH) or not os.path.exists(LABEL_PATH):
     exit()
 
 if not os.path.exists(TASK_FILE):
-    print(f"📥 Downloading '{TASK_FILE}'...")
+    print(f"Downloading '{TASK_FILE}'...")
     url = "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/latest/hand_landmarker.task"
     try:
         urllib.request.urlretrieve(url, TASK_FILE)
@@ -59,7 +59,7 @@ frame_read = tello.get_frame_read()
 # tello.takeoff()
 # tello.move_up(50)
 
-print("🚁 Flight stream live. Press 'q' to disconnect and land.")
+print("Flight stream live. Press 'q' to disconnect and land.")
 last_command_time = time.time()
 
 while True:
@@ -81,6 +81,62 @@ while True:
                 drawing_styles.get_default_hand_landmarks_style(),
                 drawing_styles.get_default_hand_connections_style()
             )
+    #----------------------------------------------------------------------
+
+                # Translation Invariance: Shift coordinates relative to wrist origin (normalized so position of gesture in frame doesn't get taken into account.)
+            wrist = hand_landmarks[0]
+            raw_points = []
+            for lm in hand_landmarks:
+                raw_points.append([lm.x - wrist.x, lm.y - wrist.y, lm.z - wrist.z])
+            
+            # Scale Invariance: Calculate max coordinate reach and normalize size so model will look at hand geometry instead of percieving size.
+            distances = [np.linalg.norm(pt) for pt in raw_points]
+            max_dist = max(distances)
+            if max_dist == 0: #prevent division by zero if all points are at the wrist
+                max_dist = 1.0
+            
+            # Normalize and structure into flat feature vector
+            normalized_points = [[pt[0]/max_dist, pt[1]/max_dist, pt[2]/max_dist] for pt in raw_points]
+            flat_coords = np.array(normalized_points).flatten().reshape(1, -1)
+
+            prediction = model.predict(flat_coords, verbose=0)
+            class_idx = np.argmax(prediction)
+            confidence = prediction[0][class_idx]
+            predicted_label = classes[class_idx]
+
+            if confidence > 0.85:
+                text = f"{predicted_label} ({confidence*100:.1f}%)"
+                cv2.putText(frame, text, (20, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 0), 3)
+
+                if predicted_label == "undefined":
+                #check if gesture is known by the mediapipe gesture detection model
+                    pass
+
+                elif predicted_label == "point_down" and time.time() - last_command_time > 2:
+                    #tello.move_down(30)
+                    print("Command: Move Down")
+                    last_command_time = time.time()
+
+                elif predicted_label == "three_fingers" and time.time() - last_command_time > 2:
+                    #follow the person function call
+                    last_command_time = time.time()
+                    print("Command: Follow Person")
+                    pass
+
+                elif predicted_label == "flat_palm" and time.time() - last_command_time > 2:
+                    #tello.land()
+                    last_command_time = time.time()
+                    print("Command: Land")
+
+                elif predicted_label == "L_sign" and time.time() - last_command_time > 2:
+                    #orbit function call
+                    print("Command: Orbit")
+                    last_command_time = time.time()
+
+                elif predicted_label == "ok_sign" and time.time() - last_command_time > 2:
+                    #tello.takeoff()
+                    print("Command: Takeoff")
+                    last_command_time = time.time()
 
     cv2.imshow('Drone View', frame)
     if cv2.waitKey(1) & 0xFF == ord('q'):
