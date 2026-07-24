@@ -97,7 +97,7 @@ while cap.isOpened():
             confidence = prediction[0][class_idx]
             predicted_label = classes[class_idx]
 
-            if confidence > 0.95:
+            if confidence > 0.85:
                 text = f"{predicted_label} ({confidence*100:.1f}%)"
                 cv2.putText(frame, text, (20, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 0), 3)
 
