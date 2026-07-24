@@ -34,7 +34,4 @@ A real-time, low-latency autonomous flight control system for the **DJI Tello** 
 - A connected **DJI Tello Drone** over Wi-Fi
 
 ### Installation
-**Coming Soon**
-Launch the primary execution script:
-
-Bash
+**Guide Coming Soon**
