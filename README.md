@@ -32,6 +32,7 @@ A real-time, low-latency autonomous flight control system for the **DJI Tello** 
 
 - Python 3.9 – 3.11
 - A connected **DJI Tello Drone** over Wi-Fi
+- **This version of this program only supports windows. A mobile app for this program may be considered in the future!**
 
 ### Installation
 **Guide Coming Soon**
