@@ -11,11 +11,34 @@ from mediapipe.tasks.python import vision
 from djitellopy import Tello
 from drone_tello import DroneTello as drone
 import funcs
+import threading
 
 # Import official MediaPipe Tasks API drawing components directly
 from mediapipe.tasks.python.vision import drawing_utils
 from mediapipe.tasks.python.vision import HandLandmarksConnections
 from mediapipe.tasks.python.vision import drawing_styles
+
+#create function to manage timing of commands and keep them in thread for faster processing and prevent crashes.
+def command(command_func, name, *args, **kwargs):
+    global is_command_busy
+
+    #if the drone is already carrying out a command, ignore new gesture triggers
+    if is_command_busy:
+        return
+
+    def work():
+        global is_command_busy
+        is_command_busy = True
+        print(f"Command: {name}")
+
+        try:
+            command_func(*args, **kwargs)
+        except Exception as e:
+            print(f"Command error ({name}): {e}")
+        finally:
+            is_command_busy = False
+
+    threading.Thread(target=work, daemon=True).start()
 
 
 MODEL_PATH = 'models/gesture_coordinate_model.keras'
@@ -116,9 +139,8 @@ while True:
 
 
                 if predicted_label == "point_down" and time.time() - last_command_time > 1:
-                    #tello.move_down(30)
-                    print("Command: Move Down")
                     last_command_time = time.time()
+                    command(d.move_down(), "Move Down", 30)
 
                 elif predicted_label == "three_fingers" and time.time() - last_command_time > 1:
                     #follow the person function call
@@ -130,6 +152,7 @@ while True:
                     #tello.land()
                     last_command_time = time.time()
                     print("Command: Land")
+                    command(d.land, "Landing")
 
                 elif predicted_label == "L_sign" and time.time() - last_command_time > 1:
                     #orbit function call
@@ -140,7 +163,7 @@ while True:
                     #tello.takeoff()
                     print("Command: Takeoff")
                     last_command_time = time.time()
-                    d.takeoff()
+                    command(d.takeoff, "Takeoff")
 
             elif result.gestures and result.hand_landmarks: #if custom hasn't detected a gesture, check if mp has a valid gesture
                 #mediapipe gesture recognition
