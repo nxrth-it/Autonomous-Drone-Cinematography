@@ -60,6 +60,9 @@ while True:
                 mp_drawing_styles.get_default_hand_landmarks_style(),
                 mp_drawing_styles.get_default_hand_connections_style()
             )
+
+        if gesture_name == "Pointing_Up":
+            print("hello")
             
     #show camera feed with the detected gesture and hand skeleton
     cv2.imshow('Camera Feed', frame)

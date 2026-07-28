@@ -9,6 +9,8 @@ import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 from djitellopy import Tello
+from drone_tello import DroneTello as drone
+import funcs
 
 # Import official MediaPipe Tasks API drawing components directly
 from mediapipe.tasks.python.vision import drawing_utils
@@ -43,27 +45,25 @@ recognizer = vision.GestureRecognizer.create_from_options(options)
 
 #=========================================================================
 
+d = drone(enable_mission_pad=False, show_cam=True)
+frame_read = d.get_frame_read()
 
-
-tello = Tello()
-tello.connect()
-print(f"Tello Battery Status: {tello.get_battery()}%")
-
-tello.streamon()
-frame_read = tello.get_frame_read()
-
-# WARNING: Only uncomment these flight triggers in clear, wide-open environments
-# tello.takeoff()
-# tello.move_up(50)
 
 print("Flight stream live. Press 'q' to disconnect and land.")
 last_command_time = time.time()
 
 while True:
     frame = frame_read.frame
-    frame = cv2.resize(frame, (640, 480))
+
+        #Skip invalid/empty initial frames from Tello
+    if frame is None or frame.size == 0:
+        time.sleep(0.01)
+        continue
+
+    frame = cv2.resize(frame, (1400, 1050))
     h, w, _ = frame.shape
-    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    rgb_frame = frame.copy() #mediapipe raw rgb frame
+    display_frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
     timestamp_ms = int(time.time() * 1000)
 
 
@@ -75,7 +75,7 @@ while True:
          #--- REMOVE ONCE TESTING IS COMPLETE --- (DRAWING HAND LANDMARKS)
         for hand_landmarks in result.hand_landmarks:
             drawing_utils.draw_landmarks(
-                frame,
+                display_frame,
                 hand_landmarks,
                 HandLandmarksConnections.HAND_CONNECTIONS,
                 drawing_styles.get_default_hand_landmarks_style(),
@@ -104,7 +104,8 @@ while True:
 
 
             #Predictions
-            prediction = model.predict(flat_coords, verbose=0)
+            prediction = model(flat_coords, training=False).numpy() #turn off training and verbose to increase speed. Verbose is output to terminal and training is graph drawing.
+            #changed from model.predict to model as model is faster. Also added .numpy() in order to change it into a numpy array.
             class_idx = np.argmax(prediction) #return indices of largest value (since axis is None by default, it returns the index of the max value in the flattened array)
             confidence = prediction[0][class_idx] 
             predicted_label = classes[class_idx]
@@ -139,6 +140,7 @@ while True:
                     #tello.takeoff()
                     print("Command: Takeoff")
                     last_command_time = time.time()
+                    d.takeoff()
 
             elif result.gestures and result.hand_landmarks: #if custom hasn't detected a gesture, check if mp has a valid gesture
                 #mediapipe gesture recognition
@@ -157,6 +159,11 @@ while True:
                 elif gesture_name == "Pointing_Up" and time.time() - last_command_time > 1:
                     print("Command: Pointing Up Action")
                     last_command_time = time.time()
+
+                    finger_pos_list = []
+                    finger_pos_list.append(flat_coords)
+
+
 
                 elif gesture_name == "Thumb_Down" and time.time() - last_command_time > 1:
                     print("Command: Thumb Down Action")
@@ -183,9 +190,9 @@ while True:
 
     cv2.imshow('Drone View', frame)
     if cv2.waitKey(1) & 0xFF == ord('q'):
-        tello.land()
+        d.land()
         break
 
 # Clean termination
-tello.streamoff()
+d.streamoff()
 cv2.destroyAllWindows()
