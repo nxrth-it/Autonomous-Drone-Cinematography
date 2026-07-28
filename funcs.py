@@ -28,8 +28,6 @@ def command(command_func, name, *args, **kwargs):
 
 
 
-# funcs.py
-
 def swipe_control(drone, curr_pos, prev_pos, threshold=0.065, rc_speed=30):
     """
     Calculates swipe direction from prev_pos to curr_pos and sends RC control.
