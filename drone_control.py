@@ -1,5 +1,4 @@
 import os
-import urllib.request
 import time
 import cv2
 import numpy as np
@@ -10,37 +9,13 @@ from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 from djitellopy import Tello
 from drone_tello import DroneTello as drone
-import funcs
+from funcs import *
 import threading
 
 # Import official MediaPipe Tasks API drawing components directly
 from mediapipe.tasks.python.vision import drawing_utils
 from mediapipe.tasks.python.vision import HandLandmarksConnections
 from mediapipe.tasks.python.vision import drawing_styles
-
-
-is_command_busy = False
-#create function to manage timing of commands and keep them in thread for faster processing and prevent crashes.
-def command(command_func, name, *args, **kwargs):
-    global is_command_busy
-
-    #if the drone is already carrying out a command, ignore new gesture triggers
-    if is_command_busy:
-        return
-
-    def work():
-        global is_command_busy
-        is_command_busy = True
-        print(f"Command: {name}")
-
-        try:
-            command_func(*args, **kwargs)
-        except Exception as e:
-            print(f"Command error ({name}): {e}")
-        finally:
-            is_command_busy = False
-
-    threading.Thread(target=work, daemon=True).start()
 
 
 MODEL_PATH = 'models/gesture_coordinate_model.keras'
@@ -76,6 +51,7 @@ frame_read = d.get_frame_read()
 
 print("Flight stream live. Press 'q' to disconnect and land.")
 last_command_time = time.time()
+prev_post = None
 
 while True:
     frame = frame_read.frame
@@ -110,6 +86,10 @@ while True:
             #Normalizing and setting up data for the custom gesture recognition model
             # Translation Invariance: Shift coordinates relative to wrist origin (normalized so position of gesture in frame doesn't get taken into account.)
             wrist = hand_landmarks[0]
+
+            index_tip = hand_landmarks.landmark[8]
+            curr_pos = (index_tip.x, index_tip.y)
+
             raw_points = []
             for lm in hand_landmarks:
                 raw_points.append([lm.x - wrist.x, lm.y - wrist.y, lm.z - wrist.z])
@@ -185,14 +165,14 @@ while True:
                     print("Command: Pointing Up Action")
                     last_command_time = time.time()
 
-                    finger_pos_list = []
-                    finger_pos_list.append(flat_coords)
+                    prev_post = swipe_control(d, curr_pos, prev_post, threshold=0.065, rc_speed=30)
 
 
 
                 elif gesture_name == "Thumb_Down" and time.time() - last_command_time > 1:
                     print("Command: Thumb Down Action")
                     last_command_time = time.time()
+                    d.set_rc_control(0,0,0,0)
 
                 elif gesture_name == "Thumb_Up" and time.time() - last_command_time > 1:
                     print("Command: Thumb Up Action (Takeoff)")
