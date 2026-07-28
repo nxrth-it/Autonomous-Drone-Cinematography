@@ -7,6 +7,7 @@ A real-time, low-latency autonomous flight control system for the **DJI Tello** 
 ## ✨ Key Features
 - **Film using Gestures**: use hand gestures to record and stop video.
 - **Maneuvers using Gestures**: Execute maneuvers using only gestures.
+- **Screenless Control**: Control your drone's movement without using a controller or device. Use just your hands!
 - **Automatic Following**: Use a gesture to get your drone to follow you around!
 ---
 
