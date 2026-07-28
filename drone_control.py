@@ -18,6 +18,8 @@ from mediapipe.tasks.python.vision import drawing_utils
 from mediapipe.tasks.python.vision import HandLandmarksConnections
 from mediapipe.tasks.python.vision import drawing_styles
 
+
+is_command_busy = False
 #create function to manage timing of commands and keep them in thread for faster processing and prevent crashes.
 def command(command_func, name, *args, **kwargs):
     global is_command_busy
@@ -140,7 +142,7 @@ while True:
 
                 if predicted_label == "point_down" and time.time() - last_command_time > 1:
                     last_command_time = time.time()
-                    command(d.move_down(), "Move Down", 30)
+                    command(d.move_down, "Move Down", 30)
 
                 elif predicted_label == "three_fingers" and time.time() - last_command_time > 1:
                     #follow the person function call
