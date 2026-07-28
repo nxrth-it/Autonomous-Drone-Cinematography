@@ -88,7 +88,7 @@ while True:
     frame = cv2.resize(frame, (1400, 1050))
     h, w, _ = frame.shape
     rgb_frame = frame.copy() #mediapipe raw rgb frame
-    display_frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+    display_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     timestamp_ms = int(time.time() * 1000)
 
 
@@ -213,7 +213,7 @@ while True:
 
 
 
-    cv2.imshow('Drone View', frame)
+    cv2.imshow('Drone View', display_frame)
     if cv2.waitKey(1) & 0xFF == ord('q'):
         d.land()
         break
