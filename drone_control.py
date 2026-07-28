@@ -63,8 +63,8 @@ while True:
 
     frame = cv2.resize(frame, (1200, 900))
     h, w, _ = frame.shape
-    rgb_frame = frame.copy() #mediapipe raw rgb frame
     display_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    rgb_frame = display_frame.copy() #mediapipe raw rgb frame
     timestamp_ms = int(time.time() * 1000)
 
 
