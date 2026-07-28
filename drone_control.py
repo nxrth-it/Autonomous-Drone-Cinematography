@@ -73,8 +73,9 @@ while True:
 
     result = recognizer.recognize(mp_image)
     if result.hand_landmarks:
-         #--- REMOVE ONCE TESTING IS COMPLETE --- (DRAWING HAND LANDMARKS)
+        #loop through landmarks
         for hand_landmarks in result.hand_landmarks:
+            #--- REMOVE ONCE TESTING IS COMPLETE --- (DRAWING HAND LANDMARKS)
             drawing_utils.draw_landmarks(
                 display_frame,
                 hand_landmarks,
@@ -87,7 +88,7 @@ while True:
             # Translation Invariance: Shift coordinates relative to wrist origin (normalized so position of gesture in frame doesn't get taken into account.)
             wrist = hand_landmarks[0]
 
-            index_tip = hand_landmarks.landmark[8]
+            index_tip = hand_landmarks[8]
             curr_pos = (index_tip.x, index_tip.y)
 
             raw_points = []
