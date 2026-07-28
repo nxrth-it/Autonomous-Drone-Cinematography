@@ -85,7 +85,7 @@ while True:
         time.sleep(0.01)
         continue
 
-    frame = cv2.resize(frame, (1400, 1050))
+    frame = cv2.resize(frame, (1200, 900))
     h, w, _ = frame.shape
     rgb_frame = frame.copy() #mediapipe raw rgb frame
     display_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
