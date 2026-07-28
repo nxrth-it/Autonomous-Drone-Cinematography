@@ -1,7 +1,7 @@
 import os
 import cv2
 
-#Collect data by taking picutres
+#Collect data by taking picutres.
 
 dataset_dir = "custom_gesture_dataset"
 gestures = "point_down", "three_fingers", "flat_palm", "L_sign", "ok_sign"
