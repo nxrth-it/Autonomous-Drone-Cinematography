@@ -118,7 +118,7 @@ while True:
 
             if confidence > 0.85 and predicted_label != "undefined": #only act on gestures that the model is confident about and are known gestures
                 text = f"{predicted_label} ({confidence*100:.1f}%)"
-                cv2.putText(frame, text, (20, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 0), 3)
+                cv2.putText(display_frame, text, (20, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 0), 3)
 
 
                 if predicted_label == "point_down" and time.time() - last_command_time > 1:
@@ -151,7 +151,7 @@ while True:
             elif result.gestures and result.hand_landmarks: #if custom hasn't detected a gesture, check if mp has a valid gesture
                 #mediapipe gesture recognition
                 gesture_name = result.gestures[0][0].category_name
-                cv2.putText(frame, f"Gesture: {gesture_name}", (10, 50), 
+                cv2.putText(display_frame, f"Gesture: {gesture_name}", (10, 50), 
                             cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
                 if gesture_name == "Closed_Fist" and time.time() - last_command_time > 1:
@@ -188,7 +188,7 @@ while True:
                     last_command_time = time.time()
 
             else:
-                cv2.putText(frame, "Undefined Gesture", (10, 50), 
+                cv2.putText(display_frame, "Undefined Gesture", (10, 50), 
                             cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
             
 
