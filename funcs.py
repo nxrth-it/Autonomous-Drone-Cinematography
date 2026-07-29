@@ -3,25 +3,28 @@ import threading
 
 
 is_command_busy = False
+last_completion_time = 0
 #create function to manage timing of commands and keep them in thread for faster processing and prevent crashes.
 def command(command_func, name, *args, **kwargs):
-    global is_command_busy
+    global is_command_busy, last_completion_time
 
     #if the drone is already carrying out a command, ignore new gesture triggers
-    if is_command_busy:
+    if is_command_busy or (time.time() - last_completion_time < 1):
         return
 
     def work():
-        global is_command_busy
+        global is_command_busy, last_completion_time
         is_command_busy = True
         print(f"Command: {name}")
 
         try:
             command_func(*args, **kwargs)
+            #time.sleep(0.05) #small delay before next command
         except Exception as e:
             print(f"Command error ({name}): {e}")
         finally:
             is_command_busy = False
+            last_completion_time = time.time()
 
     threading.Thread(target=work, daemon=True).start()
     return True
@@ -49,9 +52,9 @@ def swipe_control(drone, curr_pos, prev_pos, threshold=0.065, rc_speed=30):
     # Horizontal swipe (X-axis)
     if abs(dx) > threshold and abs(dx) > abs(dy):
         if dx > 0:
-            left_right = rc_speed    # Swipe Right -> Roll Right
+            left_right = -rc_speed    # Swipe Right -> Roll Left
         else:
-            left_right = -rc_speed   # Swipe Left -> Roll Left
+            left_right = rc_speed   # Swipe Left -> Roll Right
 
     # Vertical swipe (Y-axis: Y increases downward in MediaPipe)
     elif abs(dy) > threshold and abs(dy) > abs(dx):

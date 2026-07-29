@@ -157,6 +157,7 @@ class DroneTello(Tello):
 
             # show camera in realtime if requested
             if show_cam:
+                pass
                 # start video stream
                 self._start_video_stream()
                 if self._stream_active:

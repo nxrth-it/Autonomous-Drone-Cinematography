@@ -1,3 +1,6 @@
+#Current Latest Stable Version for some reason. To see latest version, unstable look at timeline July 29 2026, 9:11 pm
+
+
 import os
 import time
 import cv2
@@ -11,6 +14,8 @@ from djitellopy import Tello
 from drone_tello import DroneTello as drone
 from funcs import *
 import threading
+
+
 
 # Import official MediaPipe Tasks API drawing components directly
 from mediapipe.tasks.python.vision import drawing_utils
