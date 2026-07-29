@@ -77,6 +77,9 @@ while True:
     mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
 
     result = recognizer.recognize(mp_image)
+
+    is_actively_swiping = False
+
     if result.hand_landmarks:
         #loop through landmarks
         for hand_landmarks in result.hand_landmarks:
@@ -126,28 +129,28 @@ while True:
                 cv2.putText(display_frame, text, (20, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 0), 3)
 
 
-                if predicted_label == "point_down" and time.time() - last_command_time > 1:
+                if predicted_label == "point_down":
                     last_command_time = time.time()
                     command(d.move_down, "Move Down", 30)
 
-                elif predicted_label == "three_fingers" and time.time() - last_command_time > 1:
+                elif predicted_label == "three_fingers":
                     #follow the person function call
                     last_command_time = time.time()
                     print("Command: Follow Person")
                     pass
 
-                elif predicted_label == "flat_palm" and time.time() - last_command_time > 1:
+                elif predicted_label == "flat_palm":
                     #tello.land()
                     last_command_time = time.time()
                     print("Command: Land")
                     command(d.land, "Landing")
 
-                elif predicted_label == "L_sign" and time.time() - last_command_time > 1:
+                elif predicted_label == "L_sign":
                     #orbit function call
                     print("Command: Orbit")
                     last_command_time = time.time()
 
-                elif predicted_label == "ok_sign" and time.time() - last_command_time > 1:
+                elif predicted_label == "ok_sign":
                     #tello.takeoff()
                     print("Command: Takeoff")
                     last_command_time = time.time()
@@ -159,43 +162,48 @@ while True:
                 cv2.putText(display_frame, f"Gesture: {gesture_name}", (10, 50), 
                             cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
-                if gesture_name == "Closed_Fist" and time.time() - last_command_time > 1:
+                if gesture_name == "Closed_Fist":
                     print("Command: Closed Fist Action")
                     last_command_time = time.time()
 
-                elif gesture_name == "Open_Palm" and time.time() - last_command_time > 1:
+                elif gesture_name == "Open_Palm":
                     print("Command: Open Palm Action")
                     last_command_time = time.time()
 
-                elif gesture_name == "Pointing_Up" and time.time() - last_command_time > 1:
+                elif gesture_name == "Pointing_Up":
                     print("Command: Pointing Up Action")
                     last_command_time = time.time()
-
+                    is_actively_swiping = True
                     prev_post = swipe_control(d, curr_pos, prev_post, threshold=0.065, rc_speed=30)
 
 
 
-                elif gesture_name == "Thumb_Down" and time.time() - last_command_time > 1:
+                elif gesture_name == "Thumb_Down":
                     print("Command: Thumb Down Action")
                     last_command_time = time.time()
                     d.set_rc_control(0,0,0,0)
 
-                elif gesture_name == "Thumb_Up" and time.time() - last_command_time > 1:
+                elif gesture_name == "Thumb_Up":
                     print("Command: Thumb Up Action (Takeoff)")
                     last_command_time = time.time()
 
-                elif gesture_name == "Victory" and time.time() - last_command_time > 1:
+                elif gesture_name == "Victory":
                     print("Command: Victory Action")
                     last_command_time = time.time()
 
-                elif gesture_name == "ILoveYou" and time.time() - last_command_time > 1:
+                elif gesture_name == "ILoveYou":
                     print("Command: I Love You Action")
                     last_command_time = time.time()
 
             else:
                 cv2.putText(display_frame, "Undefined Gesture", (10, 50), 
                             cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-            
+
+    if not is_actively_swiping and prev_post is not None:
+        print("Safety: Stop vector issued.")
+        d.send_rc_control(0, 0, 0, 0)
+        prev_post = None  # Resets anchor clean
+
 
 
 
