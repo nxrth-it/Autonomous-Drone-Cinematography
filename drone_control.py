@@ -50,7 +50,7 @@ recognizer = vision.GestureRecognizer.create_from_options(options)
 
 #=========================================================================
 
-d = drone(enable_mission_pad=False, show_cam=True)
+d = drone(enable_mission_pad=False, show_cam=False)
 frame_read = d.get_frame_read()
 
 
