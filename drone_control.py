@@ -63,7 +63,7 @@ with open(LABEL_PATH, 'rb') as f:
 base_options = python.BaseOptions(model_asset_path='models/gesture_recognizer.task')
 options = vision.GestureRecognizerOptions(
     base_options=base_options,
-    running_mode=vision.RunningMode.IMAGE #not using live stream mode since processing it as 1 frame at a time.
+    running_mode=vision.RunningMode.VIDEO #not using live stream mode since processing it as 1 frame at a time.
     #result_callback=lambda result, output_image, timestamp_ms: update_result(result)
 )
 recognizer = vision.GestureRecognizer.create_from_options(options)
@@ -71,6 +71,8 @@ recognizer = vision.GestureRecognizer.create_from_options(options)
 #=========================================================================
 
 d = drone(enable_mission_pad=False, show_cam=False)
+d.set_video_resolution(Tello.RESOLUTION_720P)
+d.set_video_bitrate(Tello.BITRATE_5MBPS)
 d.streamon()
 time.sleep(3.5)
 frame_read = d.get_frame_read()
@@ -82,7 +84,7 @@ prev_post = None
 
 while True:
     frame = frame_read.frame
-    print(frame.shape)
+   # print(frame.shape)
 
         #Skip invalid/empty initial frames from Tello
     if frame is None or frame.size == 0:
@@ -102,7 +104,8 @@ while True:
    
     mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
 
-    result = recognizer.recognize(mp_image)
+    #recognize video
+    result = recognizer.recognize_for_video(mp_image, timestamp_ms)
 
     is_actively_swiping = False
 
