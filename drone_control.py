@@ -70,7 +70,9 @@ recognizer = vision.GestureRecognizer.create_from_options(options)
 
 #=========================================================================
 
-d = drone(enable_mission_pad=False, show_cam=True)
+d = drone(enable_mission_pad=False, show_cam=False)
+d.streamon()
+time.sleep(3.5)
 frame_read = d.get_frame_read()
 
 
@@ -201,7 +203,7 @@ while True:
                 elif gesture_name == "Thumb_Down":
                     print("Command: Thumb Down Action")
                     last_command_time = time.time()
-                    d.set_rc_control(0,0,0,0)
+                    d.send_rc_control(0,0,0,0)
 
                 elif gesture_name == "Thumb_Up":
                     print("Command: Thumb Up Action (Takeoff)")
