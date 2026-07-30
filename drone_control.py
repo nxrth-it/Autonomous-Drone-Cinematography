@@ -82,14 +82,18 @@ prev_post = None
 
 while True:
     frame = frame_read.frame
+    print(frame.shape)
 
         #Skip invalid/empty initial frames from Tello
     if frame is None or frame.size == 0:
         time.sleep(0.01)
         continue
 
-    frame = cv2.resize(frame, (1200, 900))
-    h, w, _ = frame.shape
+    native_h, native_w, _ = frame.shape
+    target_w = 900
+    target_h = int(target_w * native_h / native_w)
+    frame = cv2.resize(frame, (target_w, target_h))
+
     display_frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR) #convert to BGR only for cv2.imshow()
     rgb_frame = frame #mediapipe raw rgb frame
     timestamp_ms = int(time.time() * 1000)
@@ -181,6 +185,7 @@ while True:
             elif result.gestures and result.hand_landmarks: #if custom hasn't detected a gesture, check if mp has a valid gesture
                 #mediapipe gesture recognition
                 gesture_name = result.gestures[0][0].category_name
+                print(f"DEBUG: MP GESTURE: {gesture_name}, score: {result.gestures[0][0].score:.2f}")
                 cv2.putText(display_frame, f"Gesture: {gesture_name}", (10, 50), 
                             cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
@@ -216,6 +221,9 @@ while True:
                 elif gesture_name == "ILoveYou":
                     print("Command: I Love You Action")
                     last_command_time = time.time()
+                else:
+                    print("MP: Unmatched Gesture")
+                    print(f"DEBUG: {gesture_name}, score: {result.gestures[0][0].score:.3f}")
 
             else:
                 cv2.putText(display_frame, "Undefined Gesture", (10, 50), 
@@ -224,10 +232,10 @@ while True:
         cv2.putText(display_frame, "Undefined Gesture", (10, 50), 
             cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2) 
 
-    # if not is_actively_swiping and prev_post is not None:
-    #     print("Safety: Stop vector issued.")
-    #     d.send_rc_control(0, 0, 0, 0)
-    #     prev_post = None  # Resets anchor clean
+    if not is_actively_swiping and prev_post is not None:
+        print("Safety: Stop vector issued.")
+        d.send_rc_control(0, 0, 0, 0)
+        prev_post = None  # Resets anchor clean
 
 
 

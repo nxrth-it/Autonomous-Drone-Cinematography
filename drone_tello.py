@@ -202,6 +202,8 @@ class DroneTello(Tello):
         """
         try:
             print("Starting video stream...")
+            self.set_video_resolution(Tello.RESOLUTION_720P)
+            self.set_video_bitrate(Tello.BITRATE_AUTO)
             self.streamon()
             time.sleep(5)  # Wait longer for stream to initialize
             

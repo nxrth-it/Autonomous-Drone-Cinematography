@@ -1,3 +1,5 @@
+#Move into main branch before running :)
+
 import cv2
 import time
 import mediapipe as mp
@@ -11,7 +13,7 @@ mp_hands_connections = mp.tasks.vision.HandLandmarksConnections
 
 #SETUP MEDIAPIPE GESTURE RECOGNIZER ---
 # Ensure have 'gesture_recognizer.task' in the same folder as this script
-base_options = python.BaseOptions(model_asset_path='gesture_recognizer.task')
+base_options = python.BaseOptions(model_asset_path='models/gesture_recognizer.task')
 options = vision.GestureRecognizerOptions(
     base_options=base_options,
     running_mode=vision.RunningMode.LIVE_STREAM,
