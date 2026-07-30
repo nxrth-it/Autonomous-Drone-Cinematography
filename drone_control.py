@@ -1,6 +1,26 @@
 #Current Latest Stable Version for some reason. To see latest version, unstable look at timeline July 29 2026, 9:11 pm
 
 
+#Proposed Image Cleaning to improve mediapipe line drawing:
+# # 1. Sharpen the drone frame to kill the Wi-Fi compression blur
+# kernel = np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]])
+# sharpened_frame = cv2.filter2D(bgr_frame, -1, kernel)
+
+# # 2. Boost the contrast and brightness (histogram equalization)
+# # This mimics the webcam's automatic indoor lighting adjustment
+# lab = cv2.cvtColor(sharpened_frame, cv2.COLOR_BGR2LAB)
+# l_channel, a, b = cv2.split(lab)
+# clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8,8))
+# cl = clahe.apply(l_channel)
+# limg = cv2.merge((cl, a, b))
+# final_processed_frame = cv2.cvtColor(limg, cv2.COLOR_LAB2BGR)
+
+# # NOW pass 'final_processed_frame' to your gesture detector instead of the raw drone frame!
+
+
+
+
+
 import os
 import time
 import cv2
@@ -50,7 +70,7 @@ recognizer = vision.GestureRecognizer.create_from_options(options)
 
 #=========================================================================
 
-d = drone(enable_mission_pad=False, show_cam=False)
+d = drone(enable_mission_pad=False, show_cam=True)
 frame_read = d.get_frame_read()
 
 
@@ -68,8 +88,8 @@ while True:
 
     frame = cv2.resize(frame, (1200, 900))
     h, w, _ = frame.shape
-    display_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    rgb_frame = display_frame.copy() #mediapipe raw rgb frame
+    display_frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR) #convert to BGR only for cv2.imshow()
+    rgb_frame = frame #mediapipe raw rgb frame
     timestamp_ms = int(time.time() * 1000)
 
 
@@ -198,11 +218,14 @@ while True:
             else:
                 cv2.putText(display_frame, "Undefined Gesture", (10, 50), 
                             cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+    else:
+        cv2.putText(display_frame, "Undefined Gesture", (10, 50), 
+            cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2) 
 
-    if not is_actively_swiping and prev_post is not None:
-        print("Safety: Stop vector issued.")
-        d.send_rc_control(0, 0, 0, 0)
-        prev_post = None  # Resets anchor clean
+    # if not is_actively_swiping and prev_post is not None:
+    #     print("Safety: Stop vector issued.")
+    #     d.send_rc_control(0, 0, 0, 0)
+    #     prev_post = None  # Resets anchor clean
 
 
 
