@@ -1,3 +1,5 @@
+#Extract Landmarker points from hand for training
+
 import cv2
 import mediapipe as mp
 from mediapipe.tasks import python
