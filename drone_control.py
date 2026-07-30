@@ -72,7 +72,7 @@ recognizer = vision.GestureRecognizer.create_from_options(options)
 
 d = drone(enable_mission_pad=False, show_cam=False)
 d.set_video_resolution(Tello.RESOLUTION_720P)
-d.set_video_bitrate(Tello.BITRATE_5MBPS)
+d.set_video_bitrate(Tello.BITRATE_3MBPS)
 d.streamon()
 time.sleep(3.5)
 frame_read = d.get_frame_read()
@@ -224,9 +224,9 @@ while True:
                 elif gesture_name == "ILoveYou":
                     print("Command: I Love You Action")
                     last_command_time = time.time()
-                else:
-                    print("MP: Unmatched Gesture")
-                    print(f"DEBUG: {gesture_name}, score: {result.gestures[0][0].score:.3f}")
+                # else:
+                #     print("MP: Unmatched Gesture")
+                #     print(f"DEBUG: {gesture_name}, score: {result.gestures[0][0].score:.3f}")
 
             else:
                 cv2.putText(display_frame, "Undefined Gesture", (10, 50), 
