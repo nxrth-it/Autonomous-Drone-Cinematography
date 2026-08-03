@@ -84,6 +84,7 @@ frame_read = d.get_frame_read()
 follow_person = PersonFollower(model_path="yolo11n.pt")
 follow_mode = False
 toggle_follow = False
+three_fingers_prev = False
 
 
 
@@ -152,7 +153,7 @@ while True:
 
             # Where the hand sits in the frame. Only the yaw uses this, and
             # the wrist is a deliberately steady reference point - it barely
-            # moves while the finger is flicking, so the drone tracks toggle_followthe person
+            # moves while the finger is flicking, so the drone tracks the person
             # rather than chasing their fingertip.
             hand_center_x = wrist.x
 
@@ -239,8 +240,15 @@ while True:
                 if gesture_name == "Closed_Fist":
                     print("Command: Closed Fist Action")
                     last_command_time = time.time()
-                    toggle_follow = False
-                    
+                    # Closed fist disengages follow mode. Safe to set directly:
+                    # this branch only runs when the custom model did NOT fire, so
+                    # toggle_follow is still False and the rising-edge check below
+                    # cannot switch follow mode back on in the same frame.
+                    if follow_mode:
+                        follow_mode = False
+                        follow_person.reset()
+                        print("Follow mode: False (cancelled by closed fist)")
+
 
                 elif gesture_name == "Open_Palm":
                     print("Command: Open Palm Action")
@@ -313,6 +321,20 @@ while True:
         swipe_anchor = None
 
 
+
+    # --- follow mode toggle (rising edge) ---------------------------------
+    # Only flip when the gesture was ABSENT last frame and is PRESENT this
+    # frame, so holding three fingers toggles once instead of every frame.
+    if toggle_follow and not three_fingers_prev:
+        follow_mode = not follow_mode
+        follow_person.reset()          # clean tracker/PID state on every switch
+        print(f"Follow mode: {follow_mode}")
+
+    # Unconditional - must run EVERY frame, including frames with no gesture
+    # and no hand at all. This is what records a 'no', which re-arms the check
+    # so the next appearance counts as a fresh edge.
+    three_fingers_prev = toggle_follow
+
         #Check if follow mode has been activated
     if follow_mode:
         #print("Follow mode activated.")
@@ -335,9 +357,21 @@ while True:
 
 
     cv2.imshow('Drone View', display_frame)
-    if cv2.waitKey(1) & 0xFF == ord('q'):
+    key = cv2.waitKey(1) & 0xFF
+
+    if key == ord('q'):
+        d.send_rc_control(0, 0, 0, 0)  # Stop movement before landing
         d.land()
         break
+
+    elif key == ord('f'):
+        # Manual follow-mode toggle. This is the only off-switch that still works
+        # at filming distance - MediaPipe cannot resolve a hand from far enough
+        # away to recognise the three-finger gesture, so never rely on the gesture
+        # alone to stop an autonomous mode.
+        follow_mode = not follow_mode
+        follow_person.reset()
+        print(f"Follow mode: {follow_mode} (keyboard)")
 
 # Clean termination
 d.streamoff()

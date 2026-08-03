@@ -81,10 +81,16 @@ class PersonFollower:
         self._last_time = None
 
     def reset(self):
+        # Return the follower to the same state __init__ leaves it in, so a
+        # reset genuinely starts clean. Clearing locked_id is what allows a new
+        # target to be acquired; clearing _last_time stops the next update()
+        # from computing a huge dt spanning the whole time follow mode was off.
         self.pid_yaw.reset()
         self.pid_fwd.reset()
         self.pid_ud.reset()
         self.lost_frames = 0
+        self.locked_id = None
+        self._last_time = None
 
     def update(self, frame_bgr):
         results = self.model.track(frame_bgr, persist=True, classes=[0], verbose=False, imgsz=416)
