@@ -80,7 +80,7 @@ frame_read = d.get_frame_read()
 
 print("Flight stream live. Press 'q' to disconnect and land.")
 last_command_time = time.time()
-prev_post = None
+swipe_anchor = None   # fingertip-relative-to-wrist position when the gesture began
 
 while True:
     frame = frame_read.frame
@@ -108,6 +108,16 @@ while True:
     result = recognizer.recognize_for_video(mp_image, timestamp_ms)
 
     is_actively_swiping = False
+    # Every frame build up ONE set of RC velocities and send a single
+    # 'rc' command at the bottom of the loop. The Tello's 'rc' carries all
+    # four channels at once, so two separate send_rc_control() calls would
+    # mean the second silently overwrites the first.
+    rc_left_right = 0
+    rc_forward_back = 0
+    rc_up_down = 0
+    rc_yaw = 0
+    hand_center_x = None      # wrist x  -> drives the yaw centring
+    finger_rel_pos = None     # tip-wrist -> drives the swipe
 
     if result.hand_landmarks:
         #loop through landmarks
@@ -126,7 +136,18 @@ while True:
             wrist = hand_landmarks[0]
 
             index_tip = hand_landmarks[8]
-            curr_pos = (index_tip.x, index_tip.y)
+
+            # Where the hand sits in the frame. Only the yaw uses this, and
+            # the wrist is a deliberately steady reference point - it barely
+            # moves while the finger is flicking, so the drone tracks the person
+            # rather than chasing their fingertip.
+            hand_center_x = wrist.x
+
+            # Where the fingertip sits RELATIVE TO THE PERSON'S OWN WRIST. Measured
+            # against their wrist instead of against the frame, so the drone
+            # yawing (which slides their whole hand sideways through the frame)
+            # cannot fake a swipe or cancel a real one.
+            finger_rel_pos = (index_tip.x - wrist.x, index_tip.y - wrist.y)
 
             raw_points = []
             for lm in hand_landmarks:
@@ -200,18 +221,30 @@ while True:
                     print("Command: Open Palm Action")
                     last_command_time = time.time()
 
+
                 elif gesture_name == "Pointing_Up":
                     print("Command: Pointing Up Action")
                     last_command_time = time.time()
                     is_actively_swiping = True
-                    prev_post = swipe_control(d, curr_pos, prev_post, threshold=0.065, rc_speed=30)
+
+                    # First frame of this gesture: remember where the
+                    # fingertip started. Every later frame is measured
+                    # against that fixed point, so holding a steady offset
+                    # keeps producing movement instead of resetting to zero.
+                    if swipe_anchor is None:
+                        swipe_anchor = finger_rel_pos
+
+                    # Calculate only - the yaw still has to be mixed in below.
+                    rc_left_right, rc_forward_back, rc_up_down = swipe_control(
+                        finger_rel_pos, swipe_anchor, threshold=0.04, rc_speed=30
+                    )
 
 
 
                 elif gesture_name == "Thumb_Down":
                     print("Command: Thumb Down Action")
                     last_command_time = time.time()
-                    d.send_rc_control(0,0,0,0)
+                    #d.send_rc_control(0,0,0,0)
 
                 elif gesture_name == "Thumb_Up":
                     print("Command: Thumb Up Action (Takeoff)")
@@ -235,10 +268,22 @@ while True:
         cv2.putText(display_frame, "Undefined Gesture", (10, 50), 
             cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2) 
 
-    if not is_actively_swiping and prev_post is not None:
-        print("Safety: Stop vector issued.")
-        d.send_rc_control(0, 0, 0, 0)
-        prev_post = None  # Resets anchor clean
+    # --- mix in the yaw, then send exactly one command --------------------
+    if is_actively_swiping:
+        # Only auto-rotate while I'm actively driving it, so it doesn't
+        # quietly spin on the spot when I'm not paying attention to it.
+        rc_yaw = yaw_centering(hand_center_x, deadzone=0.12, max_yaw_speed=40)
+    else:
+        # Gesture gone (or never there) - drop the anchor so the next swipe
+        # starts fresh from wherever my finger is then, rather than being
+        # measured against a stale point from several seconds ago.
+        swipe_anchor = None
+
+    # Skip sending while a blocking command (takeoff / land / move_down) is
+    # still running in its thread - a continuous rc stream would fight that
+    # command and cancel the manoeuvre halfway through.
+    if not is_busy():
+        d.send_rc_control(rc_left_right, rc_forward_back, rc_up_down, rc_yaw)
 
 
 
