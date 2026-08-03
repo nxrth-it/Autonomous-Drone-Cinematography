@@ -85,9 +85,11 @@ def swipe_control(curr_rel_pos, anchor_rel_pos, threshold=0.04, rc_speed=30):
         # MediaPipe's y axis grows DOWNWARDS, so a negative dy means the
         # fingertip actually moved up on screen.
         if dy < 0:
-            up_down = rc_speed        # finger moved up   -> climb
+            up_down = 0
+            #up_down = rc_speed        # finger moved up   -> climb
         else:
-            up_down = -rc_speed       # finger moved down -> descend
+            up_down = 0
+            #up_down = -rc_speed       # finger moved down -> descend
 
     return left_right, forward_backward, up_down
 
