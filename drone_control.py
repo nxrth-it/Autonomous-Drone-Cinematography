@@ -311,12 +311,12 @@ while True:
 
     # --- mix in the yaw, then send exactly one command --------------------
     if is_actively_swiping:
-        # Only auto-rotate while I'm actively driving it, so it doesn't
-        # quietly spin on the spot when I'm not paying attention to it.
+        # Only auto-rotate while person is actively driving it, so it doesn't
+        # quietly spin on the spot when person is not paying attention to it.
         rc_yaw = yaw_centering(hand_center_x, deadzone=0.12, max_yaw_speed=40)
     else:
         # Gesture gone (or never there) - drop the anchor so the next swipe
-        # starts fresh from wherever my finger is then, rather than being
+        # starts fresh from wherever the finger is then, rather than being
         # measured against a stale point from several seconds ago.
         swipe_anchor = None
 
@@ -360,7 +360,7 @@ while True:
     key = cv2.waitKey(1) & 0xFF
 
     if key == ord('q'):
-        d.send_rc_control(0, 0, 0, 0)  # Stop movement before landing
+        d.send_rc_control(0, 0, 0, 0)  # Stop movement before landing 
         d.land()
         break
 
