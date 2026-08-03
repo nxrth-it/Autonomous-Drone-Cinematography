@@ -34,6 +34,7 @@ from djitellopy import Tello
 from drone_tello import DroneTello as drone
 from funcs import *
 import threading
+from follow import PersonFollower, PID
 
 
 
@@ -69,13 +70,22 @@ options = vision.GestureRecognizerOptions(
 recognizer = vision.GestureRecognizer.create_from_options(options)
 
 #=========================================================================
-
+#Initialize drone and start video stream
 d = drone(enable_mission_pad=False, show_cam=False)
 d.set_video_resolution(Tello.RESOLUTION_720P)
 d.set_video_bitrate(Tello.BITRATE_3MBPS)
 d.streamon()
 time.sleep(3.5)
 frame_read = d.get_frame_read()
+
+
+###########################################################
+#Follow Person Setup
+follow_person = PersonFollower(model_path="yolo11n.pt")
+follow_mode = False
+toggle_follow = False
+
+
 
 
 print("Flight stream live. Press 'q' to disconnect and land.")
@@ -119,6 +129,9 @@ while True:
     hand_center_x = None      # wrist x  -> drives the yaw centring
     finger_rel_pos = None     # tip-wrist -> drives the swipe
 
+    toggle_follow = False  # Reset toggle each frame; only a single frame of the gesture should trigger it
+
+
     if result.hand_landmarks:
         #loop through landmarks
         for hand_landmarks in result.hand_landmarks:
@@ -139,7 +152,7 @@ while True:
 
             # Where the hand sits in the frame. Only the yaw uses this, and
             # the wrist is a deliberately steady reference point - it barely
-            # moves while the finger is flicking, so the drone tracks the person
+            # moves while the finger is flicking, so the drone tracks toggle_followthe person
             # rather than chasing their fingertip.
             hand_center_x = wrist.x
 
@@ -181,29 +194,39 @@ while True:
 
                 if predicted_label == "point_down":
                     last_command_time = time.time()
+                     #disable follow mode if it was enabled
                     command(d.move_down, "Move Down", 30)
+                    
+
+
 
                 elif predicted_label == "three_fingers":
                     #follow the person function call
                     last_command_time = time.time()
                     print("Command: Follow Person")
-                    pass
+                    toggle_follow = True
 
+
+
+                   #add frame counter to switch follow_mode off after a certain number of frames 
                 elif predicted_label == "flat_palm":
                     #tello.land()
                     last_command_time = time.time()
                     print("Command: Land")
+                    
                     command(d.land, "Landing")
 
                 elif predicted_label == "L_sign":
                     #orbit function call
                     print("Command: Orbit")
                     last_command_time = time.time()
+                    
 
                 elif predicted_label == "ok_sign":
                     #tello.takeoff()
                     print("Command: Takeoff")
                     last_command_time = time.time()
+                    
                     command(d.takeoff, "Takeoff")
 
             elif result.gestures and result.hand_landmarks: #if custom hasn't detected a gesture, check if mp has a valid gesture
@@ -216,15 +239,19 @@ while True:
                 if gesture_name == "Closed_Fist":
                     print("Command: Closed Fist Action")
                     last_command_time = time.time()
+                    toggle_follow = False
+                    
 
                 elif gesture_name == "Open_Palm":
                     print("Command: Open Palm Action")
                     last_command_time = time.time()
+                    
 
 
                 elif gesture_name == "Pointing_Up":
                     print("Command: Pointing Up Action")
                     last_command_time = time.time()
+                    
                     is_actively_swiping = True
 
                     # First frame of this gesture: remember where the
@@ -244,19 +271,23 @@ while True:
                 elif gesture_name == "Thumb_Down":
                     print("Command: Thumb Down Action")
                     last_command_time = time.time()
+                    
                     #d.send_rc_control(0,0,0,0)
 
                 elif gesture_name == "Thumb_Up":
                     print("Command: Thumb Up Action (Takeoff)")
                     last_command_time = time.time()
+                    
 
                 elif gesture_name == "Victory":
-                    print("Command: Victory Action")
+                    print("Command: Take Picture. Say Cheese!")
                     last_command_time = time.time()
+                    #don't disable follow mode to take picture during following
 
                 elif gesture_name == "ILoveYou":
                     print("Command: I Love You Action")
                     last_command_time = time.time()
+                    
                 # else:
                 #     print("MP: Unmatched Gesture")
                 #     print(f"DEBUG: {gesture_name}, score: {result.gestures[0][0].score:.3f}")
@@ -264,6 +295,8 @@ while True:
             else:
                 cv2.putText(display_frame, "Undefined Gesture", (10, 50), 
                             cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+
+           
     else:
         cv2.putText(display_frame, "Undefined Gesture", (10, 50), 
             cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2) 
@@ -278,6 +311,19 @@ while True:
         # starts fresh from wherever my finger is then, rather than being
         # measured against a stale point from several seconds ago.
         swipe_anchor = None
+
+
+        #Check if follow mode has been activated
+    if follow_mode:
+        #print("Follow mode activated.")
+        box_coords = follow_person.update(display_frame)
+        if box_coords is not None:
+            x1, y1, x2, y2 = box_coords
+            cv2.rectangle(display_frame, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
+
+
+
+
 
     # Skip sending while a blocking command (takeoff / land / move_down) is
     # still running in its thread - a continuous rc stream would fight that
