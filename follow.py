@@ -162,7 +162,7 @@ class PersonFollower:
             box_h = y2 - y1
 
             yaw = (box_cx - (w / 2)) / (w / 2) #calculayte yaw error
-            vertical = -(box_cy - (h/2)) / (h/2) #calculate vertical error
+            vertical = -(box_cy - (h*0.59)) / (h/2) #calculate vertical error
             forwb = box_h / h  #box height as a fraction of frame height.
 
 

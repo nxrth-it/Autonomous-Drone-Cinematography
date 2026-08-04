@@ -81,7 +81,12 @@ frame_read = d.get_frame_read()
 
 ###########################################################
 #Follow Person Setup
-follow_person = PersonFollower(model_path="models/yolo11n.pt")
+# Phase D: YAW AXIS ONLY. max_forward/max_updown become each PID's
+# output_limit, so 0 clamps those axes to zero no matter what the controller
+# computes - safer than remembering not to wire them, because it cannot be
+# bypassed. Raise them one at a time once yaw is tuned and trusted.
+follower = PersonFollower(model_path="models/yolo11n.pt",
+                          max_forward=0, max_updown=0)
 follow_mode = False
 toggle_follow = False
 three_fingers_prev = False
@@ -107,10 +112,10 @@ while True:
     target_h = int(target_w * native_h / native_w)
     frame = cv2.resize(frame, (target_w, target_h))
 
+    #MediaPipe
     display_frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR) #convert to BGR only for cv2.imshow()
     rgb_frame = frame #mediapipe raw rgb frame
     timestamp_ms = int(time.time() * 1000)
-
 
    
     mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
@@ -214,6 +219,7 @@ while True:
                     #tello.land()
                     last_command_time = time.time()
                     print("Command: Land")
+                    follower.reset()  # Reset the follower state when landing
                     
                     command(d.land, "Landing")
 
@@ -246,7 +252,8 @@ while True:
                     # cannot switch follow mode back on in the same frame.
                     if follow_mode:
                         follow_mode = False
-                        follow_person.reset()
+                        follower.follow_state = "land"
+                        follower.reset()
                         print("Follow mode: False (cancelled by closed fist)")
 
 
@@ -327,7 +334,7 @@ while True:
     # frame, so holding three fingers toggles once instead of every frame.
     if toggle_follow and not three_fingers_prev:
         follow_mode = not follow_mode
-        follow_person.reset()          # clean tracker/PID state on every switch
+        follower.reset()          # clean tracker/PID state on every switch
         print(f"Follow mode: {follow_mode}")
 
     # Unconditional - must run EVERY frame, including frames with no gesture
@@ -339,20 +346,39 @@ while True:
     if follow_mode:
         # update() now always returns the same five things, so this unpack is
         # safe on every path - including "no person detected".
-        yaw_cor, lr_cor, fb_cor, ud_cor, box_coords = follow_person.update(display_frame)
+        yaw_cor, lr_cor, fb_cor, ud_cor, box_coords = follower.update(display_frame)
 
-        # NOTE: deliberately NOT written into rc_* yet. Phase C verifies every
-        # error sign on the ground before the follower is allowed to move the
-        # drone. Wire these in only after that check passes.
+        # Assign, do NOT send. There is exactly one send_rc_control per frame,
+        # at the bottom of the loop - a second call here would be overwritten by
+        # it microseconds later, and would also bypass the is_busy() guard.
+        # This sits OUTSIDE the box check on purpose: during a search there is
+        # no box, but yaw_cor carries the sweep that has to reach the drone.
+        rc_left_right   = lr_cor
+        rc_forward_back = fb_cor
+        rc_up_down      = ud_cor
+        rc_yaw          = yaw_cor
 
         if box_coords is not None:
             x1, y1, x2, y2 = box_coords
             cv2.rectangle(display_frame, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
-            cv2.putText(display_frame, f"FOLLOWING id={follow_person.locked_id}", (10, 90),
+            cv2.putText(display_frame, f"FOLLOWING id={follower.locked_id}", (10, 90),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+
         else:
-            cv2.putText(display_frame, f"FOLLOW: {follow_person.follow_state}", (10, 90),
+            cv2.putText(display_frame, f"FOLLOW: {follower.follow_state}", (10, 90),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+
+        if follower.follow_state == "land":
+            # Clear the velocities so the single send at the bottom of the loop
+            # issues a stop rather than the last search sweep.
+            rc_left_right, rc_forward_back, rc_up_down, rc_yaw = 0, 0, 0, 0
+            follow_mode = False          # stop steering BEFORE it descends
+            # Threaded wrapper, not d.land() directly - a bare land() blocks the
+            # loop for several seconds, freezing the video and killing q and f.
+            # is_busy() then holds off the rc stream while it descends.
+            command(d.land, "Landing")
+            print("Follow mode: False (landing)")
+            follower.reset()  # Reset the follower state when landing
 
 
 
@@ -381,7 +407,7 @@ while True:
         # away to recognise the three-finger gesture, so never rely on the gesture
         # alone to stop an autonomous mode.
         follow_mode = not follow_mode
-        follow_person.reset()
+        follower.reset()
         print(f"Follow mode: {follow_mode} (keyboard)")
 
 # Clean termination
