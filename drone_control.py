@@ -337,11 +337,22 @@ while True:
 
         #Check if follow mode has been activated
     if follow_mode:
-        #print("Follow mode activated.")
-        box_coords = follow_person.update(display_frame)
+        # update() now always returns the same five things, so this unpack is
+        # safe on every path - including "no person detected".
+        yaw_cor, lr_cor, fb_cor, ud_cor, box_coords = follow_person.update(display_frame)
+
+        # NOTE: deliberately NOT written into rc_* yet. Phase C verifies every
+        # error sign on the ground before the follower is allowed to move the
+        # drone. Wire these in only after that check passes.
+
         if box_coords is not None:
             x1, y1, x2, y2 = box_coords
             cv2.rectangle(display_frame, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
+            cv2.putText(display_frame, f"FOLLOWING id={follow_person.locked_id}", (10, 90),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+        else:
+            cv2.putText(display_frame, f"FOLLOW: {follow_person.follow_state}", (10, 90),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
 
 
 
