@@ -81,7 +81,7 @@ frame_read = d.get_frame_read()
 
 ###########################################################
 #Follow Person Setup
-follow_person = PersonFollower(model_path="yolo11n.pt")
+follow_person = PersonFollower(model_path="models/yolo11n.pt")
 follow_mode = False
 toggle_follow = False
 three_fingers_prev = False
