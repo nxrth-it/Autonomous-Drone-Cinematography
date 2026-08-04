@@ -108,6 +108,16 @@ class PersonFollower:
         up_down = 0
         follow_box = None  #Prevent UnboundLocalError if not assigned.
 
+        # --- 0. dt: REAL elapsed time since the previous call ----------------
+        # Measured, never assumed. This loop's speed varies a lot (YOLO,
+        # MediaPipe and TensorFlow all run inside it). The integral scales WITH
+        # dt and the derivative divides BY it, so a wrong dt silently wrecks
+        # both terms. _last_time is None on the first call and after reset(),
+        # which is why a tiny stand-in is used rather than a real subtraction.
+        now = time.time()
+        dt = 1e-3 if self._last_time is None else (now - self._last_time)
+        self._last_time = now
+
         # --- 1. DETECT FIRST ------------------------------------------------
         # Nothing about the state can be decided until we know whether OUR
         # target is in this frame. Deciding first meant the state logic had to
@@ -128,15 +138,16 @@ class PersonFollower:
                 areas = (box_coords[:, 2] - box_coords[:, 0]) * (box_coords[:, 3] - box_coords[:, 1])
                 self.locked_id = ids[int(np.argmax(areas))]
 
-            # Only ever accept OUR id. If a stranger is detected and our target
+            # Only ever accept person's id. If a stranger is detected and the target
             # is not, follow_box stays None - that counts as lost, which is the
             # whole point of locking.
             for i in range(len(ids)):
                 if ids[i] == self.locked_id:
                     follow_box = box_coords[i]  # x1, y1, x2, y2
 
-        # --- 2. THEN decide the state, from what was actually found ---------
+        #decide the state, from what was actually found ---------
         if follow_box is not None and self.follow_state != "land":
+            h, w = frame_bgr.shape[:2]
             # Target visible. Back to following and clear both loss counters.
             # (Once "land" is decided it is final until reset() - a one-frame
             # flicker of detection must not abort a landing already underway.)
@@ -144,7 +155,35 @@ class PersonFollower:
             self.lost_frames = 0
             self.search_start = None
 
-            # PID work goes here in Phase C. Velocities stay 0 until then.
+            #Extract coordinates from the box being tracked
+            x1, y1, x2, y2 = follow_box
+            box_cx = (x1 + x2) / 2.0
+            box_cy = (y1 + y2) / 2.0
+            box_h = y2 - y1
+
+            yaw = (box_cx - (w / 2)) / (w / 2) #calculayte yaw error
+            vertical = -(box_cy - (h/2)) / (h/2) #calculate vertical error
+            forwb = box_h / h  #box height as a fraction of frame height.
+
+
+            #Calculate PID outputs for each axis. 
+            # One expression covers both directions. Positive when the box is
+            # SMALLER than the setpoint (person far away -> close in), negative
+            # when BIGGER (person too close -> back off). Branching on the sign
+            # and negating one side made the "too close" case command forward,
+            # straight at the person.
+            forwb_err = (self.target_height_frac - forwb) / self.target_height_frac
+            #divide by self.target_height_frac for scaling as a fraction of the setpoint. (Proportional, kind of)
+            forward_back = self.pid_fwd.update(forwb_err, dt)
+
+            #clamp forward/backward if the box is too close to the edge of the frame, to avoid crashing
+            if x1 <= 2 or y1 <= 2 or x2 >= w - 2 or y2 >= h - 2:
+                forward_back = 0
+
+            yaw_cor = self.pid_yaw.update(yaw, dt)
+            up_down = self.pid_ud.update(vertical, dt)
+
+            #print(f"yaw={yaw_cor:.1f}  fwd={forward_back:.1f}  ud={up_down:.1f}  box_h={box_h:.1f}  lost={self.lost_frames}")
 
         elif follow_box is None and self.follow_state != "land":
             # Target not visible this frame.
@@ -185,6 +224,7 @@ if __name__ == "__main__":
     follower = PersonFollower()
 
     cap = cv2.VideoCapture(0)  # Use the first camera
+   
 
 
 
@@ -203,7 +243,7 @@ if __name__ == "__main__":
             cv2.putText(frame, "No Person Detected", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 2)
 
         # State readout - watching this is how you debug the state machine.
-        cv2.putText(frame, f"{follower.follow_state}  yaw={yaw_cor}  lost={follower.lost_frames}",
+        cv2.putText(frame, f"yaw={yaw_cor:.1f}  fwd={forward_back:.1f}  ud={up_down:.1f}  left_right={left_right:.1f}  lost={follower.lost_frames}",
                     (50, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
 
         cv2.imshow("Person Follower", frame)
