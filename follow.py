@@ -216,7 +216,12 @@ class PersonFollower:
                 if self.follow_state == "search":
                     yaw_cor = 20  # sweep to look for them
 
-        return yaw_cor, left_right, forward_back, up_down, follow_box
+        # Cast to plain ints. The box coords come out of numpy, so every error
+        # and therefore every PID output is a numpy.float32 - and djitellopy
+        # type-checks send_rc_control and rejects anything that isn't a builtin
+        # int. Casting here rather than at the call sites means the contract
+        # ("this returns ints") holds for every caller.
+        return int(yaw_cor), int(left_right), int(forward_back), int(up_down), follow_box
 
 #Testing YOLO11 person tracking - careful: target reaquiring gets the person with the biggest box.
 if __name__ == "__main__":

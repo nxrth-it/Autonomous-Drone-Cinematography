@@ -136,6 +136,7 @@ while True:
     finger_rel_pos = None     # tip-wrist -> drives the swipe
 
     toggle_follow = False  # Reset toggle each frame; only a single frame of the gesture should trigger it
+    allowed_f_gestures = ("three_fingers", "Closed_Fist", "Victory", "Open_Palm")
 
 
     if result.hand_landmarks:
@@ -197,11 +198,14 @@ while True:
                 text = f"{predicted_label} ({confidence*100:.1f}%)"
                 cv2.putText(display_frame, text, (20, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 0), 3)
 
+                if follow_mode and predicted_label not in allowed_f_gestures:
+                    cv2.putText(display_frame, "Movement Gestures are locked while the drone follows you.", (20, 130), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 165, 255), 2)
+                    #Prevent other commands besides 3 fingers to run
 
-                if predicted_label == "point_down":
+                elif predicted_label == "point_down":
                     last_command_time = time.time()
                      #disable follow mode if it was enabled
-                    command(d.move_down, "Move Down", 30)
+                    rc_up_down = -30
                     
 
 
@@ -243,6 +247,10 @@ while True:
                 cv2.putText(display_frame, f"Gesture: {gesture_name}", (10, 50), 
                             cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
+                if follow_mode and predicted_label not in allowed_f_gestures:
+                     cv2.putText(display_frame, "Movement Gestures are locked while the drone follows you.", (20, 130),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 165, 255), 2)
+
                 if gesture_name == "Closed_Fist":
                     print("Command: Closed Fist Action")
                     last_command_time = time.time()
@@ -258,7 +266,7 @@ while True:
 
 
                 elif gesture_name == "Open_Palm":
-                    print("Command: Open Palm Action")
+                    print("Command: Start taking video")
                     last_command_time = time.time()
                     
 
