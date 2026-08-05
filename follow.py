@@ -54,7 +54,7 @@ class PersonFollower:
 
     def __init__(self, model_path="models/yolo11n.pt",
                  target_height_frac=0.40,
-                 max_yaw=40, max_forward=20, max_updown=15,
+                 max_yaw=70, max_forward=31, max_updown=15,
                  lost_limit=30):
         # 'n' = nano, the smallest YOLO11. On an RTX 4050 this is a few
         # milliseconds a frame. A bigger model buys accuracy you don't need
@@ -72,7 +72,7 @@ class PersonFollower:
 
         # One PID per axis. These gains are STARTING POINTS ONLY - see the
         # tuning section. Note ki=0.0: we deliberately start with PD only.
-        self.pid_yaw = PID(kp=45.0, ki=0.0, kd=4.0, output_limit=max_yaw)
+        self.pid_yaw = PID(kp=190.0, ki=0.0, kd=30.0, output_limit=max_yaw) #99
         self.pid_fwd = PID(kp=40.0, ki=0.0, kd=3.0, output_limit=max_forward)
         self.pid_ud  = PID(kp=30.0, ki=0.0, kd=2.0, output_limit=max_updown)
 
