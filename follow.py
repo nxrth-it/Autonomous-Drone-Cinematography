@@ -224,7 +224,7 @@ class PersonFollower:
                     print("No person detected for 7 seconds. Landing the drone.")
 
                 if self.follow_state == "search":
-                    yaw_cor = 20 * self.last_seen_side  # sweep to look for them
+                    yaw_cor = 32 * self.last_seen_side  # sweep to look for them
 
         # Cast to plain ints. The box coords come out of numpy, so every error
         # and therefore every PID output is a numpy.float32 - and djitellopy
