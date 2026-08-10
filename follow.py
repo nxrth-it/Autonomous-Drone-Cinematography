@@ -187,7 +187,7 @@ class PersonFollower:
             forward_back = self.pid_fwd.update(forwb_err, dt)
 
             #clamp forward/backward if the box is too close to the edge of the frame, to avoid crashing
-            if x1 <= 2 or y1 <= 2 or x2 >= w - 2 or y2 >= h - 2:
+            if forward_back > 0 and (x1 <= 2 or x2 >= w - 2):
                 forward_back = 0
 
             yaw_cor = self.pid_yaw.update(yaw, dt)

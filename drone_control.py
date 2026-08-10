@@ -98,7 +98,7 @@ print("Flight stream live. Press 'q' to disconnect and land.")
 last_command_time = time.time()
 swipe_anchor = None   # fingertip-relative-to-wrist position when the gesture began
 
-follower.model.predict(np.zeros((675, 900, 3), imgsz=416, dtype=np.uint8), verbose=False)
+follower.model.predict(np.zeros((675, 900, 3), dtype=np.uint8), imgsz=416, verbose=False)
 
 while True:
     frame = frame_read.frame
