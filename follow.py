@@ -75,7 +75,7 @@ class PersonFollower:
         # One PID per axis. These gains are STARTING POINTS ONLY - see the
         # tuning section. Note ki=0.0: we deliberately start with PD only.
         self.pid_yaw = PID(kp=60.0, ki=15.0, kd=4.0, output_limit=max_yaw) #99
-        self.pid_fwd = PID(kp=40.0, ki=0.1, kd=3.0, output_limit=max_forward)
+        self.pid_fwd = PID(kp=90.0, ki=0.1, kd=3.0, output_limit=max_forward)
         self.pid_ud  = PID(kp=30.0, ki=0.1, kd=2.0, output_limit=max_updown)
 
         self.locked_id = None
