@@ -70,9 +70,11 @@ class PersonFollower:
         # giving up entirely.
         self.lost_limit = lost_limit
 
+        self.last_seen_side = 1
+
         # One PID per axis. These gains are STARTING POINTS ONLY - see the
         # tuning section. Note ki=0.0: we deliberately start with PD only.
-        self.pid_yaw = PID(kp=60.0, ki=28.0, kd=4.0, output_limit=max_yaw) #99
+        self.pid_yaw = PID(kp=60.0, ki=15.0, kd=4.0, output_limit=max_yaw) #99
         self.pid_fwd = PID(kp=40.0, ki=0.1, kd=3.0, output_limit=max_forward)
         self.pid_ud  = PID(kp=30.0, ki=0.1, kd=2.0, output_limit=max_updown)
 
@@ -96,6 +98,7 @@ class PersonFollower:
         self._last_time = None
         self.search_start = None
         self.follow_state = "search"
+        self.last_seen_side = 1
 
 
 
@@ -116,6 +119,7 @@ class PersonFollower:
         # which is why a tiny stand-in is used rather than a real subtraction.
         now = time.time()
         dt = 1e-3 if self._last_time is None else (now - self._last_time)
+       # print("DT: Frames Per Second", 1.0/ dt)
         self._last_time = now
 
         # --- 1. DETECT FIRST ------------------------------------------------
@@ -166,6 +170,12 @@ class PersonFollower:
             forwb = box_h / h  #box height as a fraction of frame height.
 
 
+            if yaw > 0:
+                self.last_seen_side = 1
+            elif yaw < 0:
+                self.last_seen_side = -1
+
+
             #Calculate PID outputs for each axis. 
             # One expression covers both directions. Positive when the box is
             # SMALLER than the setpoint (person far away -> close in), negative
@@ -214,13 +224,14 @@ class PersonFollower:
                     print("No person detected for 7 seconds. Landing the drone.")
 
                 if self.follow_state == "search":
-                    yaw_cor = 20  # sweep to look for them
+                    yaw_cor = 20 * self.last_seen_side  # sweep to look for them
 
         # Cast to plain ints. The box coords come out of numpy, so every error
         # and therefore every PID output is a numpy.float32 - and djitellopy
         # type-checks send_rc_control and rejects anything that isn't a builtin
         # int. Casting here rather than at the call sites means the contract
         # ("this returns ints") holds for every caller.
+        print("Current Yaw:", yaw_cor)
         return int(yaw_cor), int(left_right), int(forward_back), int(up_down), follow_box
 
 #Testing YOLO11 person tracking - careful: target reaquiring gets the person with the biggest box.
