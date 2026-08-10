@@ -183,8 +183,10 @@ class PersonFollower:
             # and negating one side made the "too close" case command forward,
             # straight at the person.
             forwb_err = (self.target_height_frac - forwb) / self.target_height_frac
+            print("forwb_error is", forwb_err)
             #divide by self.target_height_frac for scaling as a fraction of the setpoint. (Proportional, kind of)
             forward_back = self.pid_fwd.update(forwb_err, dt)
+            print("Current forward speed: ", forward_back)
 
             #clamp forward/backward if the box is too close to the edge of the frame, to avoid crashing
             if forward_back > 0 and (x1 <= 2 or x2 >= w - 2):
