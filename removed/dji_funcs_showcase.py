@@ -8,17 +8,21 @@ d = drone(enable_mission_pad=False, show_cam=True)
 if not getattr(d, "is_connected", False):
     raise SystemExit("Drone connection failed. Turn on the Tello and connect to its Wi-Fi network before running this script.")
 
+                # settle into a stable hover
+
+d.get_pitch()      # degrees
+d.get_roll()
+d.get_speed_x()    # cm/s
+
 
 d.takeoff()
-time.sleep(3)                    # settle into a stable hover
+time.sleep(3)
 
-print(">>> rc 0 20 0 0  (positive forward_backward) for 2s")
-for _ in range(20):
-    d.send_rc_control(0, 20, 0, 0)
-    time.sleep(0.1)
+for _ in range(30):
+    d.send_rc_control(0, 0, 0, 0)          # commanding NOTHING
+    print(f"pitch={d.get_pitch()}  roll={d.get_roll()}  vx={d.get_speed_x()}")
+    time.sleep(0.2)
 
-d.send_rc_control(0, 0, 0, 0)
-time.sleep(2)
 d.land()
 
 # # Showcase of basic Movement
