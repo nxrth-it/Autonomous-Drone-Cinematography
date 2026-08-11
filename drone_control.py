@@ -249,11 +249,16 @@ while True:
                 cv2.putText(display_frame, f"Gesture: {gesture_name}", (10, 50), 
                             cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
-                if follow_mode and predicted_label not in allowed_f_gestures:
-                     cv2.putText(display_frame, "Movement Gestures are locked while the drone follows you.", (20, 130),
+                # Must test gesture_name, not predicted_label - this is the
+                # MediaPipe branch, and predicted_label belongs to the custom
+                # model. It also has to be the HEAD of the chain (everything
+                # below is now elif) or it only draws text while every gesture
+                # underneath still runs.
+                if follow_mode and gesture_name not in allowed_f_gestures:
+                    cv2.putText(display_frame, "Movement Gestures are locked while the drone follows you.", (20, 130),
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 165, 255), 2)
 
-                if gesture_name == "Closed_Fist":
+                elif gesture_name == "Closed_Fist":
                     print("Command: Closed Fist Action")
                     last_command_time = time.time()
                     # Closed fist disengages follow mode. Safe to set directly:

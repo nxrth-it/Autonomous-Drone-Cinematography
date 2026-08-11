@@ -53,7 +53,7 @@ class PersonFollower:
     """
 
     def __init__(self, model_path="models/yolo11n.pt",
-                 target_height_frac=0.40,
+                 target_height_frac=0.82,
                  max_yaw=100, max_forward=31, max_updown=15,
                  lost_limit=30):
         # 'n' = nano, the smallest YOLO11. On an RTX 4050 this is a few
@@ -175,6 +175,8 @@ class PersonFollower:
             elif yaw < 0:
                 self.last_seen_side = -1
 
+            print(f"box_h={box_h:.0f}  h={h}  forwb={forwb:.3f}")
+
 
             #Calculate PID outputs for each axis. 
             # One expression covers both directions. Positive when the box is
@@ -228,12 +230,15 @@ class PersonFollower:
                 if self.follow_state == "search":
                     yaw_cor = 32 * self.last_seen_side  # sweep to look for them
 
+                
+
         # Cast to plain ints. The box coords come out of numpy, so every error
         # and therefore every PID output is a numpy.float32 - and djitellopy
         # type-checks send_rc_control and rejects anything that isn't a builtin
         # int. Casting here rather than at the call sites means the contract
         # ("this returns ints") holds for every caller.
-        print("Current Yaw:", yaw_cor)
+        #print("Current Yaw:", yaw_cor)
+        
         return int(yaw_cor), int(left_right), int(forward_back), int(up_down), follow_box
 
 #Testing YOLO11 person tracking - careful: target reaquiring gets the person with the biggest box.
