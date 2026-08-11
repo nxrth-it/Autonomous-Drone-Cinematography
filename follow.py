@@ -186,7 +186,7 @@ class PersonFollower:
             elif yaw < 0:
                 self.last_seen_side = -1
 
-            print(f"box_h={box_h:.0f}  h={h}  forwb={forwb:.3f}")
+            #print(f"box_h={box_h:.0f}  h={h}  forwb={forwb:.3f}")
 
 
             #Calculate PID outputs for each axis. 
@@ -203,7 +203,7 @@ class PersonFollower:
                 forward_back = -30
             else:
                 forward_back = self.pid_fwd.update(forwb_err, dt)
-            print("Current forward speed: ", forward_back)
+            #print("Current forward speed: ", forward_back)
 
             # --- dead band compensation ------------------------------------
             # The Tello ignores rc magnitudes below roughly 12 - its position
