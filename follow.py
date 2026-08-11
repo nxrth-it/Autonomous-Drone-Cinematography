@@ -168,11 +168,12 @@ class PersonFollower:
 
             #Extract coordinates from the box being tracked
             x1, y1, x2, y2 = follow_box
+            #find middle of box
             box_cx = (x1 + x2) / 2.0
             box_cy = (y1 + y2) / 2.0
             box_h = y2 - y1
 
-            yaw = (box_cx - (w / 2)) / (w / 2) #calculayte yaw error
+            yaw = (box_cx - (w / 2)) / (w / 2) #calculate yaw error
             vertical = -(box_cy - (h*0.59)) / (h/2) #calculate vertical error
             forwb = box_h / h  #box height as a fraction of frame height.
 
