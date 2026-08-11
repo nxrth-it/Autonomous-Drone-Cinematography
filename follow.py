@@ -53,7 +53,7 @@ class PersonFollower:
     """
 
     def __init__(self, model_path="models/yolo11n.pt",
-                 target_height_frac=0.92,
+                 target_height_frac=0.74,
                  max_yaw=100, max_forward=31, max_updown=15,
                  lost_limit=30):
         # 'n' = nano, the smallest YOLO11. On an RTX 4050 this is a few
@@ -70,12 +70,19 @@ class PersonFollower:
         # giving up entirely.
         self.lost_limit = lost_limit
 
+        # Dead band compensation for the forward axis. fwd_deadzone is in error
+        # units (fraction of the setpoint) - inside it, hold position. Outside
+        # it, never command less than fwd_min_cmd, because the Tello does not
+        # respond to rc magnitudes below roughly 12.
+        self.fwd_deadzone = 0.03
+        self.fwd_min_cmd = 12
+
         self.last_seen_side = 1
 
         # One PID per axis. These gains are STARTING POINTS ONLY - see the
         # tuning section. Note ki=0.0: we deliberately start with PD only.
         self.pid_yaw = PID(kp=60.0, ki=15.0, kd=4.0, output_limit=max_yaw) #99
-        self.pid_fwd = PID(kp=90.0, ki=0.1, kd=3.0, output_limit=max_forward)
+        self.pid_fwd = PID(kp=45.0, ki=0.1, kd=0.5, output_limit=max_forward)
         self.pid_ud  = PID(kp=30.0, ki=0.1, kd=2.0, output_limit=max_updown)
 
         self.locked_id = None
@@ -111,7 +118,7 @@ class PersonFollower:
         up_down = 0
         follow_box = None  #Prevent UnboundLocalError if not assigned.
 
-        # --- 0. dt: REAL elapsed time since the previous call ----------------
+        # dt:  elapsed time since the previous call ----------------
         # Measured, never assumed. This loop's speed varies a lot (YOLO,
         # MediaPipe and TensorFlow all run inside it). The integral scales WITH
         # dt and the derivative divides BY it, so a wrong dt silently wrecks
@@ -122,8 +129,8 @@ class PersonFollower:
        # print("DT: Frames Per Second", 1.0/ dt)
         self._last_time = now
 
-        # --- 1. DETECT FIRST ------------------------------------------------
-        # Nothing about the state can be decided until we know whether OUR
+        # DETECT FIRST ------------------------------------------------
+        # Nothing about the state can be decided until we know whether the
         # target is in this frame. Deciding first meant the state logic had to
         # guess, which is how it ended up sweeping at 20 yaw while looking
         # straight at the person.
@@ -149,11 +156,11 @@ class PersonFollower:
                 if ids[i] == self.locked_id:
                     follow_box = box_coords[i]  # x1, y1, x2, y2
 
-        #decide the state, from what was actually found ---------
+        #decide the state, from what was actually found 
         if follow_box is not None and self.follow_state != "land":
             h, w = frame_bgr.shape[:2]
             # Target visible. Back to following and clear both loss counters.
-            # (Once "land" is decided it is final until reset() - a one-frame
+            # (Once "land" is decided it is final until reset() one-frame
             # flicker of detection must not abort a landing already underway.)
             self.follow_state = "follow"
             self.lost_frames = 0
@@ -189,6 +196,22 @@ class PersonFollower:
             #divide by self.target_height_frac for scaling as a fraction of the setpoint. (Proportional, kind of)
             forward_back = self.pid_fwd.update(forwb_err, dt)
             print("Current forward speed: ", forward_back)
+
+            # --- dead band compensation ------------------------------------
+            # The Tello ignores rc magnitudes below roughly 12 - its position
+            # hold simply absorbs them and the aircraft does not move. Flights
+            # showed the controller commanding -8 for dozens of frames straight
+            # while forwb never changed: awake, correct, and completely
+            # inaudible to the airframe.
+            #
+            # hold still when close to the setpoint, but if the
+            # controller wants motion at all, ask for enough to actually
+            # produce it. The deadzone has to come first, otherwise the boost
+            # keep drone at setpoint
+            if abs(forwb_err) < self.fwd_deadzone:
+                forward_back = 0
+            elif abs(forward_back) < self.fwd_min_cmd:
+                forward_back = self.fwd_min_cmd if forward_back > 0 else -self.fwd_min_cmd
 
             #clamp forward/backward if the box is too close to the edge of the frame, to avoid crashing
             if forward_back > 0 and (x1 <= 2 or x2 >= w - 2):
