@@ -86,7 +86,7 @@ frame_read = d.get_frame_read()
 # computes - safer than remembering not to wire them, because it cannot be
 # bypassed. Raise them one at a time once yaw is tuned and trusted.
 follower = PersonFollower(model_path="models/yolo11n.pt",
-                          max_forward=60, max_updown=0)
+                          max_forward=80, max_updown=0)
 follow_mode = False
 toggle_follow = False
 three_fingers_prev = False
