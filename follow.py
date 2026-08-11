@@ -26,15 +26,18 @@ class PID:
             dt = 1e-3
 
         p_term = self.kp * error
-
+        #integral is accumulated error.
         self._integral += error * dt
+
+        #clamp integral term
         self._integral = max(-self.integral_limit,
                              min(self.integral_limit, self._integral))
+        
         i_term = self.ki * self._integral
 
         if self._prev_error is None:
             # First sample: no previous error exists, so a derivative would be
-            # meaningless (and enormous). Skip it exactly once.
+            # meaningless (and enormous). Skip it once.
             d_term = 0.0
         else:
             d_term = self.kd * (error - self._prev_error) / dt
@@ -195,7 +198,11 @@ class PersonFollower:
             forwb_err = (self.target_height_frac - forwb) / self.target_height_frac
             print("forwb_error is", forwb_err)
             #divide by self.target_height_frac for scaling as a fraction of the setpoint. (Proportional, kind of)
-            forward_back = self.pid_fwd.update(forwb_err, dt)
+
+            if forwb >= 0.99:  #for this case, values between 0.96 and 0.99 will be in a deadzone. No movement at all.
+                forward_back = -20
+            else:
+                forward_back = self.pid_fwd.update(forwb_err, dt)
             print("Current forward speed: ", forward_back)
 
             # --- dead band compensation ------------------------------------
