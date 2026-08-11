@@ -200,7 +200,7 @@ class PersonFollower:
             #divide by self.target_height_frac for scaling as a fraction of the setpoint. (Proportional, kind of)
 
             if forwb >= 0.98:  #for this case, values between 0.96 and 0.99 will be in a deadzone. No movement at all. 
-                forward_back = -20
+                forward_back = -30
             else:
                 forward_back = self.pid_fwd.update(forwb_err, dt)
             print("Current forward speed: ", forward_back)
