@@ -346,7 +346,7 @@ while True:
         # measured against a stale point from several seconds ago.
         swipe_lost_frames += 1
         if swipe_lost_frames >= 10:
-            swipe_anchor = None
+            swipe_anchor = None 
 
 
 
