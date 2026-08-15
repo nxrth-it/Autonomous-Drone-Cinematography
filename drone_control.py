@@ -81,12 +81,14 @@ frame_read = d.get_frame_read()
 
 ###########################################################
 #Follow Person Setup
-# Phase D: YAW AXIS ONLY. max_forward/max_updown become each PID's
+# YAW AXIS ONLY. max_forward/max_updown become each PID's
 # output_limit, so 0 clamps those axes to zero no matter what the controller
 # computes - safer than remembering not to wire them, because it cannot be
 # bypassed. Raise them one at a time once yaw is tuned and trusted.
 follower = PersonFollower(model_path="models/yolo11n.pt",
-                          max_forward=80, max_updown=50)
+                          max_forward=100, max_updown=20)
+
+#Not sure, but enabling up down may be causing drone to stabilize more backwards during follow mode.
 follow_mode = False
 toggle_follow = False
 three_fingers_prev = False
@@ -96,6 +98,7 @@ three_fingers_prev = False
 
 print("Flight stream live. Press 'q' to disconnect and land.")
 last_command_time = time.time()
+swipe_lost_frames = 0
 swipe_anchor = None   # fingertip-relative-to-wrist position when the gesture began
 
 follower.model.predict(np.zeros((675, 900, 3), dtype=np.uint8), imgsz=416, verbose=False)
@@ -331,16 +334,19 @@ while True:
         cv2.putText(display_frame, "Undefined Gesture", (10, 50), 
             cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2) 
 
-    # --- mix in the yaw, then send exactly one command --------------------
+    # --- add yaw, then send exactly one command --------------------
     if is_actively_swiping:
         # Only auto-rotate while person is actively driving it, so it doesn't
         # quietly spin on the spot when person is not paying attention to it.
         rc_yaw = yaw_centering(hand_center_x, deadzone=0.12, max_yaw_speed=40)
+        swipe_lost_frames = 0
     else:
         # Gesture gone (or never there) - drop the anchor so the next swipe
         # starts fresh from wherever the finger is then, rather than being
         # measured against a stale point from several seconds ago.
-        swipe_anchor = None
+        swipe_lost_frames += 1
+        if swipe_lost_frames >= 10:
+            swipe_anchor = None
 
 
 
