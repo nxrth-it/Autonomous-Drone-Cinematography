@@ -86,7 +86,7 @@ frame_read = d.get_frame_read()
 # computes - safer than remembering not to wire them, because it cannot be
 # bypassed. Raise them one at a time once yaw is tuned and trusted.
 follower = PersonFollower(model_path="models/yolo11n.pt",
-                          max_forward=100, max_updown=20)
+                          max_forward=100, max_updown=0)
 
 #Not sure, but enabling up down may be causing drone to stabilize more backwards during follow mode.
 follow_mode = False
@@ -358,7 +358,7 @@ while True:
         follower.reset()          # clean tracker/PID state on every switch
         print(f"Follow mode: {follow_mode}")
 
-    # Unconditional - must run EVERY frame, including frames with no gesture
+    # Unconditional - must run every frame, including frames with no gesture
     # and no hand at all. This is what records a 'no', which re-arms the check
     # so the next appearance counts as a fresh edge.
     three_fingers_prev = toggle_follow
