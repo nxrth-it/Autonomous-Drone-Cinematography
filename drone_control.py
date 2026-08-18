@@ -296,7 +296,7 @@ while True:
 
                     # Calculate only - the yaw still has to be mixed in below.
                     rc_left_right, rc_forward_back, rc_up_down = swipe_control(
-                        finger_rel_pos, swipe_anchor, threshold=0.04, rc_speed=30
+                        finger_rel_pos, swipe_anchor, threshold=0.025, rc_speed=30
                     )
 
 
@@ -308,7 +308,7 @@ while True:
                     #d.send_rc_control(0,0,0,0)
 
                 elif gesture_name == "Thumb_Up":
-                    print("Command: Thumb Up Action (Takeoff)")
+                    print("Command: Thumb Up Action")
                     last_command_time = time.time()
                     
 
