@@ -56,7 +56,7 @@ class PersonFollower:
     """
 
     def __init__(self, model_path="models/yolo11n.pt",
-                 target_height_frac=0.74,
+                 target_height_frac=0.85,
                  max_yaw=100, max_forward=31, max_updown=15,
                  lost_limit=30):
         # 'n' = nano, the smallest YOLO11. On an RTX 4050 this is a few
