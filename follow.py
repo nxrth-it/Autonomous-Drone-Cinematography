@@ -180,6 +180,8 @@ class PersonFollower:
             vertical = -(box_cy - (h*0.59)) / (h/2) #calculate vertical error
             forwb = box_h / h  #box height as a fraction of frame height.
 
+            ##is_clipped = (x1 <= 2 and box_w < 0.6 * w) or (x2 >= w-2 and box_w < 0.6 * w)
+
 
             if yaw > 0:
                 self.last_seen_side = 1
@@ -222,7 +224,8 @@ class PersonFollower:
                 forward_back = self.fwd_min_cmd if forward_back > 0 else -self.fwd_min_cmd
 
             #clamp forward/backward if the box is too close to the edge of the frame, to avoid crashing
-            if forward_back > 0 and (x1 <= 2 or x2 >= w - 2):
+            #prevent forward from stoppping instantly once person hits the edge.
+            if forward_back > 0 and y1 <= 2:
                 forward_back = 0
 
             yaw_cor = self.pid_yaw.update(yaw, dt)
