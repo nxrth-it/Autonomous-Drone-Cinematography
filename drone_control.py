@@ -339,7 +339,7 @@ while True:
 
                     if time.time() - last_photo_time >= 3:
                         print("Command: Take Picture. Say Cheese!")
-                        t = time.strftime("%H%M$S") + ".jpg"
+                        t = time.strftime("%Y%m%d_%H%M%S") + ".jpg"
                         d.capture(filename=t)
                         last_photo_time = time.time()
                     #don't disable follow mode to take picture during following
