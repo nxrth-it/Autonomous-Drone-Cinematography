@@ -128,3 +128,10 @@ def yaw_centering(hand_center_x, deadzone=0.12, max_yaw_speed=40):
         yaw = -max_yaw_speed
 
     return yaw
+
+
+
+def timestamp():
+    """Filename-safe timestamp. Hyphens not colons - Windows forbids ':' in
+    filenames."""
+    return time.strftime("%d-%m-%Y_%H-%M-%S") #day month year _ hour minute second

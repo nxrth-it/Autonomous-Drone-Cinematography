@@ -339,7 +339,7 @@ while True:
 
                     if time.time() - last_photo_time >= 3:
                         print("Command: Take Picture. Say Cheese!")
-                        t = time.strftime("%Y%m%d_%H%M%S") + ".jpg"
+                        t = "photo_" + timestamp() + ".jpg"
                         d.capture(filename=t)
                         last_photo_time = time.time()
                     #don't disable follow mode to take picture during following
@@ -370,7 +370,7 @@ while True:
             # takes (width, height) - reversed from shape.
             vh, vw = display_frame.shape[:2]
             os.makedirs("videos", exist_ok=True)
-            name = "videos/" + time.strftime("%Y%m%d_%H%M%S") + ".mp4"
+            name = "videos/video_" + timestamp() + ".mp4"
             vid_writer = cv2.VideoWriter(name, fc, 20, (vw, vh), True)
 
             print(f"Recording Video: {name}")
