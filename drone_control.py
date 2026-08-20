@@ -104,6 +104,13 @@ swipe_anchor = None   # fingertip-relative-to-wrist position when the gesture be
 #initialize cooldown for photo taking
 last_photo_time = 0
 
+#initialize video taking
+vid_writer = None
+thumb_up_prev = False
+
+#create CUDA context and upload model weights to GPU memory. (Faster usage later + no lag)
+#np.zeroes = array with 675 rows 900 columns with 3 values per pixel
+#use uint8 (unsigned 8bit integer) for pixel format
 follower.model.predict(np.zeros((675, 900, 3), dtype=np.uint8), imgsz=416, verbose=False)
 
 while True:
@@ -122,6 +129,14 @@ while True:
 
     #MediaPipe
     display_frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR) #convert to BGR only for cv2.imshow()
+
+    # Record BEFORE anything is drawn on display_frame, so the footage is clean
+    # - no landmark skeletons, boxes or status text baked into the video. Also
+    # avoids needing a .copy(), which would be a 1.8MB memcpy every frame.
+    # Must run at top level every frame: putting it inside a gesture branch
+    # would only record on frames where that gesture happened to be recognised.
+    if vid_writer is not None:
+        vid_writer.write(display_frame)
     rgb_frame = frame #mediapipe raw rgb frame
     timestamp_ms = int(time.time() * 1000)
 
@@ -142,6 +157,7 @@ while True:
     rc_yaw = 0
     hand_center_x = None      # wrist x  -> drives the yaw centring
     finger_rel_pos = None     # tip-wrist -> drives the swipe
+    is_thumb_up = False
 
     toggle_follow = False  # Reset toggle each frame; only a single frame of the gesture should trigger it
     allowed_f_gestures = ("three_fingers", "Closed_Fist", "Victory", "Open_Palm")
@@ -312,11 +328,11 @@ while True:
 
                 elif gesture_name == "Thumb_Up":
                     print("Command: Thumb Up Action")
+                    # Only report that the gesture was seen. The toggle and the
+                    # frame writing both happen at top level - this branch does
+                    # not run on every frame, so neither can live here.
+                    is_thumb_up = True
                     last_command_time = time.time()
-                    fc = cv2.VideoWriter_fourcc(*'mp4v')
-                    height, width = frame.shape
-                    vid_writer = cv2.VideoWriter(f"video.mp4", fc, 20, (width, height), True)
-                    
 
                 elif gesture_name == "Victory":
                     last_command_time = time.time()
@@ -345,6 +361,29 @@ while True:
     else:
         cv2.putText(display_frame, "Undefined Gesture", (10, 50), 
             cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2) 
+
+
+    if is_thumb_up and not thumb_up_prev:
+        if vid_writer is None:
+            fc = cv2.VideoWriter_fourcc(*'mp4v')
+            # Size must come from the frame actually written, and VideoWriter
+            # takes (width, height) - reversed from shape.
+            vh, vw = display_frame.shape[:2]
+            name = time.strftime("%Y%m%d_%H%M%S") + ".mp4"
+            vid_writer = cv2.VideoWriter(name, fc, 20, (vw, vh), True)
+
+            print(f"Recording Video: {name}")
+
+        else:
+            vid_writer.release()
+            vid_writer = None
+            print("Recording Stopped")
+
+    # Unconditional - must run EVERY frame, not only when an edge fires. Left
+    # inside the block above, prev sticks at True after the first toggle and no
+    # further rising edge can ever be detected: record once, never stop.
+    thumb_up_prev = is_thumb_up
+                                
 
     # --- add yaw then send exactly one command 
     if is_actively_swiping:
@@ -430,7 +469,14 @@ while True:
     key = cv2.waitKey(1) & 0xFF
 
     if key == ord('q'):
-        d.send_rc_control(0, 0, 0, 0)  # Stop movement before landing 
+        # Finalise any recording in progress. Without release() the file has no
+        # completed header and will not play back at all.
+        if vid_writer is not None:
+            vid_writer.release()
+            vid_writer = None
+            print("Recording Stopped (quit)")
+
+        d.send_rc_control(0, 0, 0, 0)  # Stop movement before landing
         d.land()
         break
 
