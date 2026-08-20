@@ -315,7 +315,7 @@ while True:
 
                     # Calculate only - the yaw still has to be mixed in below.
                     rc_left_right, rc_forward_back, rc_up_down = swipe_control(
-                        finger_rel_pos, swipe_anchor, threshold=0.025, rc_speed=30
+                        finger_rel_pos, swipe_anchor, threshold=0.017, rc_speed=30
                     )
 
 
@@ -369,7 +369,8 @@ while True:
             # Size must come from the frame actually written, and VideoWriter
             # takes (width, height) - reversed from shape.
             vh, vw = display_frame.shape[:2]
-            name = time.strftime("%Y%m%d_%H%M%S") + ".mp4"
+            os.makedirs("videos", exist_ok=True)
+            name = "videos/" + time.strftime("%Y%m%d_%H%M%S") + ".mp4"
             vid_writer = cv2.VideoWriter(name, fc, 20, (vw, vh), True)
 
             print(f"Recording Video: {name}")

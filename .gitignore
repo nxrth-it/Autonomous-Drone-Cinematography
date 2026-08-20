@@ -1,4 +1,5 @@
 .venv
 custom_gesture_dataset/
 pictures/
+videos/
 process pictures/
