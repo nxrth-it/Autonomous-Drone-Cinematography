@@ -92,6 +92,7 @@ follower = PersonFollower(model_path="models/yolo11n.pt",
 follow_mode = False
 toggle_follow = False
 three_fingers_prev = False
+follow_lost_frames = 0
 
 
 
@@ -107,6 +108,7 @@ last_photo_time = 0
 #initialize video taking
 vid_writer = None
 thumb_up_prev = False
+thumb_up_lost_frames = 0
 
 #create CUDA context and upload model weights to GPU memory. (Faster usage later + no lag)
 #np.zeroes = array with 675 rows 900 columns with 3 values per pixel
@@ -380,10 +382,15 @@ while True:
             vid_writer = None
             print("Recording Stopped")
 
-    # Unconditional - must run EVERY frame, not only when an edge fires. Left
-    # inside the block above, prev sticks at True after the first toggle and no
-    # further rising edge can ever be detected: record once, never stop.
-    thumb_up_prev = is_thumb_up
+    #Period where gesture is maintained (prevent activation twice due to lag or frame skip)
+    if is_thumb_up:
+        thumb_up_lost_frames = 0
+        thumb_up_prev = True
+    else:
+        thumb_up_lost_frames += 1
+        if thumb_up_lost_frames >= 8:
+            thumb_up_prev = False
+    
                                 
 
     # --- add yaw then send exactly one command 
@@ -410,10 +417,14 @@ while True:
         follower.reset()          # clean tracker/PID state on every switch
         print(f"Follow mode: {follow_mode}")
 
-    # Unconditional - must run every frame, including frames with no gesture
-    # and no hand at all. This is what records a 'no', which re-arms the check
-    # so the next appearance counts as a fresh edge.
-    three_fingers_prev = toggle_follow
+    #only clear after 8 frames without the detection, prevent false triggering
+    if toggle_follow:
+        follow_lost_frames = 0
+        three_fingers_prev = True
+    else:
+        follow_lost_frames += 1
+        if follow_lost_frames >= 8:
+            three_fingers_prev = False
 
         #Check if follow mode has been activated
     if follow_mode:

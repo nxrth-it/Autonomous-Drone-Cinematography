@@ -135,3 +135,8 @@ def timestamp():
     """Filename-safe timestamp. Hyphens not colons - Windows forbids ':' in
     filenames."""
     return time.strftime("%d-%m-%Y_%H-%M-%S") #day month year _ hour minute second
+
+def orbit_control():
+    pass
+def dronie_control():
+    pass

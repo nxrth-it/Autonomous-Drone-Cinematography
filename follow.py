@@ -94,6 +94,7 @@ class PersonFollower:
 
         self.search_start = None  # Timestamp when search mode started
         self.follow_state = "search"  # Initial state is search mode
+        self.mode = "follow" #"follow" | "orbit", "dronie" |||| #Used to activate tricks and follow mode
 
     def reset(self):
         # Return the follower to the same state __init__ leaves it in, so a
@@ -109,6 +110,7 @@ class PersonFollower:
         self.search_start = None
         self.follow_state = "search"
         self.last_seen_side = 1
+        self.mode = "follow" #"follow" | "orbit", "dronie" |||| #Used to activate tricks and follow mode
 
 
 
@@ -274,6 +276,8 @@ class PersonFollower:
         #print("Current Yaw:", yaw_cor)
         
         return int(yaw_cor), int(left_right), int(forward_back), int(up_down), follow_box
+
+
 
 #Testing YOLO11 person tracking - careful: target reaquiring gets the person with the biggest box.
 if __name__ == "__main__":
