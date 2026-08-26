@@ -266,6 +266,12 @@ class PersonFollower:
                 if self.follow_state == "search":
                     yaw_cor = 32 * self.last_seen_side  # sweep to look for them
 
+        #Need to fix indent
+        if self.mode == "orbit":
+            left_right = self.orbit_speed * self.orbit_dir
+
+        elif self.mode == "dronie":
+            pass
                 
 
         # Cast to plain ints. The box coords come out of numpy, so every error
@@ -306,6 +312,9 @@ if __name__ == "__main__":
         # State readout - watching this is how you debug the state machine.
         cv2.putText(frame, f"yaw={yaw_cor:.1f}  fwd={forward_back:.1f}  ud={up_down:.1f}  left_right={left_right:.1f}  lost={follower.lost_frames}",
                     (50, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+
+
+        
 
         cv2.imshow("Person Follower", frame)
 
