@@ -89,10 +89,17 @@ follower = PersonFollower(model_path="models/yolo11n.pt",
                           max_forward=100, max_updown=0)
 
 #Not sure, but enabling up down may be causing drone to stabilize more backwards during follow mode.
+
+#Follow mode toggle setup
 follow_mode = False
 toggle_follow = False
 three_fingers_prev = False
 follow_lost_frames = 0
+
+#Orbit toggle
+prev_orbit = False
+is_orbit = False
+orbit_lost_frames = 0
 
 
 
@@ -148,11 +155,13 @@ while True:
     #recognize video
     result = recognizer.recognize_for_video(mp_image, timestamp_ms)
 
+    #Reset every frame
     is_actively_swiping = False
+    is_orbit = False
     # Every frame build up ONE set of RC velocities and send a single
-    # 'rc' command at the bottom of the loop. The Tello's 'rc' carries all
+    # rc command at the bottom of the loop. The Tello's rc carries all
     # four channels at once, so two separate send_rc_control() calls would
-    # mean the second silently overwrites the first.
+    # mean the second  overwrites the first.
     rc_left_right = 0
     rc_forward_back = 0
     rc_up_down = 0
@@ -161,14 +170,14 @@ while True:
     finger_rel_pos = None     # tip-wrist -> drives the swipe
     is_thumb_up = False
 
-    toggle_follow = False  # Reset toggle each frame; only a single frame of the gesture should trigger it
+    toggle_follow = False  # Reset toggle each frame
     allowed_f_gestures = ("three_fingers", "Closed_Fist", "Victory", "Open_Palm", "L_sign")
 
 
     if result.hand_landmarks:
         #loop through landmarks
         for hand_landmarks in result.hand_landmarks:
-            #--- REMOVE ONCE TESTING IS COMPLETE --- (DRAWING HAND LANDMARKS)
+            #(DRAWING HAND LANDMARKS)
             drawing_utils.draw_landmarks(
                 display_frame,
                 hand_landmarks,
@@ -256,6 +265,8 @@ while True:
                 elif predicted_label == "L_sign":
                     #orbit function call
                     print("Command: Orbit")
+                    is_orbit = True
+
                     last_command_time = time.time()
                     
 
@@ -425,6 +436,29 @@ while True:
         follow_lost_frames += 1
         if follow_lost_frames >= 8:
             three_fingers_prev = False
+
+
+
+    if is_orbit and not prev_orbit:
+        if not follow_mode:
+            follow_mode = True
+            follower.reset()
+            follower.mode = "orbit"
+
+
+        elif follower.mode == "orbit":
+            follower.mode = "follow"
+            orbit_lost_frames = 0
+
+        else:
+            follower.mode = "orbit"
+    #grace period while toggling
+    if is_orbit:
+        orbit_lost_frames = 0
+        prev_orbit = True
+    else:
+        if orbit_lost_frames >= 8:
+            prev_orbit = False
 
         #Check if follow mode has been activated
     if follow_mode:
