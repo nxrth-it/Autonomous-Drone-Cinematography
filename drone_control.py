@@ -105,7 +105,6 @@ orbit_lost_frames = 0
 
 
 print("Flight stream live. Press 'q' to disconnect and land.")
-last_command_time = time.time()
 swipe_lost_frames = 0
 swipe_anchor = None   # fingertip-relative-to-wrist position when the gesture began
 
@@ -238,7 +237,6 @@ while True:
                     #Prevent other commands besides 3 fingers to run
 
                 elif predicted_label == "point_down":
-                    last_command_time = time.time()
                      #disable follow mode if it was enabled
                     rc_up_down = -30
                     
@@ -247,7 +245,6 @@ while True:
 
                 elif predicted_label == "three_fingers":
                     #follow the person function call
-                    last_command_time = time.time()
                     print("Command: Follow Person")
                     toggle_follow = True
 
@@ -256,7 +253,6 @@ while True:
                    #add frame counter to switch follow_mode off after a certain number of frames 
                 elif predicted_label == "flat_palm":
                     #tello.land()
-                    last_command_time = time.time()
                     print("Command: Land")
                     follower.reset()  # Reset the follower state when landing
                     
@@ -267,13 +263,11 @@ while True:
                     print("Command: Orbit")
                     is_orbit = True
 
-                    last_command_time = time.time()
                     
 
                 elif predicted_label == "ok_sign":
                     #tello.takeoff()
                     print("Command: Takeoff")
-                    last_command_time = time.time()
                     
                     command(d.takeoff, "Takeoff")
 
@@ -295,7 +289,6 @@ while True:
 
                 elif gesture_name == "Closed_Fist":
                     print("Command: Closed Fist Action")
-                    last_command_time = time.time()
                     # Closed fist disengages follow mode. Safe to set directly:
                     # this branch only runs when the custom model did NOT fire, so
                     # toggle_follow is still False and the rising-edge check below
@@ -308,14 +301,13 @@ while True:
 
 
                 elif gesture_name == "Open_Palm":
-                   # print("Command: Start taking video")
-                    last_command_time = time.time()
-                    
+                    #DRONIE !
+                    pass
+
 
 
                 elif gesture_name == "Pointing_Up":
                     print("Command: Pointing Up Action")
-                    last_command_time = time.time()
                     
                     is_actively_swiping = True
 
@@ -335,7 +327,6 @@ while True:
 
                 elif gesture_name == "Thumb_Down":
                     print("Command: Thumb Down Action")
-                    last_command_time = time.time()
                     
                     #d.send_rc_control(0,0,0,0)
 
@@ -345,10 +336,8 @@ while True:
                     # frame writing both happen at top level - this branch does
                     # not run on every frame, so neither can live here.
                     is_thumb_up = True
-                    last_command_time = time.time()
 
                 elif gesture_name == "Victory":
-                    last_command_time = time.time()
 
                     if time.time() - last_photo_time >= 3:
                         print("Command: Take Picture. Say Cheese!")
@@ -360,7 +349,6 @@ while True:
                 elif gesture_name == "ILoveYou":
                     print("Command: I Love You Action")
                     
-                    last_command_time = time.time()
                     
                 # else:
                 #     print("MP: Unmatched Gesture")
@@ -448,7 +436,6 @@ while True:
 
         elif follower.mode == "orbit":
             follower.mode = "follow"
-            orbit_lost_frames = 0
 
         else:
             follower.mode = "orbit"
@@ -457,6 +444,7 @@ while True:
         orbit_lost_frames = 0
         prev_orbit = True
     else:
+        orbit_lost_frames += 1
         if orbit_lost_frames >= 8:
             prev_orbit = False
 
