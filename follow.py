@@ -268,9 +268,13 @@ class PersonFollower:
 
         #Need to fix indent
         if self.mode == "orbit":
+            #drone will be around 2m  away
+            #drone speed 20 = 20cm / second
             left_right = self.orbit_speed * self.orbit_dir
 
         elif self.mode == "dronie":
+            #Rise at an increasing rate
+            #Move backwards at an increasing rate.
             pass
                 
 
