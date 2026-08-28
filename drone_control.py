@@ -162,7 +162,7 @@ while True:
     is_thumb_up = False
 
     toggle_follow = False  # Reset toggle each frame; only a single frame of the gesture should trigger it
-    allowed_f_gestures = ("three_fingers", "Closed_Fist", "Victory", "Open_Palm")
+    allowed_f_gestures = ("three_fingers", "Closed_Fist", "Victory", "Open_Palm", "L_sign")
 
 
     if result.hand_landmarks:
@@ -432,10 +432,10 @@ while True:
         # safe on every path - including "no person detected".
         yaw_cor, lr_cor, fb_cor, ud_cor, box_coords = follower.update(display_frame)
 
-        # Assign, do NOT send. There is exactly one send_rc_control per frame,
+        # Assign do not send. There is exactly one send_rc_control per frame,
         # at the bottom of the loop - a second call here would be overwritten by
         # it microseconds later, and would also bypass the is_busy() guard.
-        # This sits OUTSIDE the box check on purpose: during a search there is
+        # This sits outside the box check on purpose during a search there is
         # no box, but yaw_cor carries the sweep that has to reach the drone.
         rc_left_right   = lr_cor
         rc_forward_back = fb_cor

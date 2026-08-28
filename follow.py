@@ -95,6 +95,8 @@ class PersonFollower:
         self.search_start = None  # Timestamp when search mode started
         self.follow_state = "search"  # Initial state is search mode
         self.mode = "follow" #"follow" | "orbit", "dronie" |||| #Used to activate tricks and follow mode
+        self.orbit_speed = 40 #cm/s speed lateral strafe
+        self.orbit_dir = 1 #1 is right (clockwise) -1 is left (counter clockwise)
 
     def reset(self):
         # Return the follower to the same state __init__ leaves it in, so a
@@ -233,6 +235,19 @@ class PersonFollower:
             yaw_cor = self.pid_yaw.update(yaw, dt)
             up_down = self.pid_ud.update(vertical, dt)
 
+
+
+            if self.mode == "orbit":
+                #drone will be around 2m  away
+                #drone speed 20 = 20cm / second
+                left_right = self.orbit_speed * self.orbit_dir
+
+            elif self.mode == "dronie":
+                #Rise at an increasing rate
+                #Move backwards at an increasing rate.
+                pass
+                    
+
             #print(f"yaw={yaw_cor:.1f}  fwd={forward_back:.1f}  ud={up_down:.1f}  box_h={box_h:.1f}  lost={self.lost_frames}")
 
         elif follow_box is None and self.follow_state != "land":
@@ -266,17 +281,7 @@ class PersonFollower:
                 if self.follow_state == "search":
                     yaw_cor = 32 * self.last_seen_side  # sweep to look for them
 
-        #Need to fix indent
-        if self.mode == "orbit":
-            #drone will be around 2m  away
-            #drone speed 20 = 20cm / second
-            left_right = self.orbit_speed * self.orbit_dir
 
-        elif self.mode == "dronie":
-            #Rise at an increasing rate
-            #Move backwards at an increasing rate.
-            pass
-                
 
         # Cast to plain ints. The box coords come out of numpy, so every error
         # and therefore every PID output is a numpy.float32 - and djitellopy
