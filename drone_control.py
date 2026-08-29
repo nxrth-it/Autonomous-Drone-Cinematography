@@ -295,7 +295,6 @@ while True:
                     # cannot switch follow mode back on in the same frame.
                     if follow_mode:
                         follow_mode = False
-                        follower.follow_state = "land"
                         follower.reset()
                         print("Follow mode: False (cancelled by closed fist)")
 
