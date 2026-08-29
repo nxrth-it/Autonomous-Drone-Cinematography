@@ -95,7 +95,7 @@ class PersonFollower:
         self.search_start = None  # Timestamp when search mode started
         self.follow_state = "search"  # Initial state is search mode
         self.mode = "follow" #"follow" | "orbit", "dronie" |||| #Used to activate tricks and follow mode
-        self.orbit_speed = 40 #cm/s speed lateral strafe
+        self.orbit_speed = 32 #cm/s speed lateral strafe
         self.orbit_dir = 1 #1 is right (clockwise) -1 is left (counter clockwise)
 
     def reset(self):
