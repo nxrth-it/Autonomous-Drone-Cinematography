@@ -100,7 +100,7 @@ follow_lost_frames = 0
 prev_orbit = False
 is_orbit = False
 orbit_lost_frames = 0
-
+stall_frames = 0
 
 
 
@@ -486,6 +486,18 @@ while True:
             follower.reset()  # Reset the follower state when landing
 
 
+    #safety to prevent drone from continuously crashing into objects while orbiting
+    #Prevent speed commands that are very close to 0cm/s from triggering
+    if follow_mode and abs(rc_left_right) > 15 and abs(d.get_speed_y()) < 5:
+        stall_frames += 1
+    else:
+        stall_frames = 0
+    if stall_frames >= 10:
+        print("Drone blocked - stopping command")
+        rc_left_right = rc_forward_back = rc_up_down = rc_yaw = 0
+        follow_mode = False
+        follower.reset()
+        stall_frames = 0
 
 
 
