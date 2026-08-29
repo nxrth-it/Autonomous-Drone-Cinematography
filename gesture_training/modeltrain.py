@@ -18,7 +18,8 @@ print("Loading localized dataset...")
 df = pd.read_csv(CSV_FILE_NAME)
 
 X = df.drop('label', axis=1).values  # Normalized 63 coordinates
-y_raw = df['label'].values           # String names
+y_raw = df['label'].replace({'Undefined':'undefined'}).values  
+#DO NOT USE .LOWER UP THERE IT WILL BREAK ALL OF THE CLASSES         # String names
 
 # Encode string labels to integers
 label_encoder = LabelEncoder()
