@@ -100,6 +100,11 @@ follow_lost_frames = 0
 prev_orbit = False
 is_orbit = False
 orbit_lost_frames = 0
+
+#Dronie toggle
+prev_dronie = False
+is_dronie = False
+dronie_lost_frames = 0
 stall_frames = 0
 
 
@@ -157,6 +162,7 @@ while True:
     #Reset every frame
     is_actively_swiping = False
     is_orbit = False
+    is_dronie = False
     # Every frame build up ONE set of RC velocities and send a single
     # rc command at the bottom of the loop. The Tello's rc carries all
     # four channels at once, so two separate send_rc_control() calls would
@@ -238,7 +244,8 @@ while True:
 
                 elif predicted_label == "point_down":
                      #disable follow mode if it was enabled
-                    rc_up_down = -30
+                    #rc_up_down = -30
+                    pass
                     
 
 
@@ -301,7 +308,10 @@ while True:
 
                 elif gesture_name == "Open_Palm":
                     #DRONIE !
-                    pass
+                    # Only report the gesture. The toggle happens at top level,
+                    # because this branch does not run on every frame.
+                    print("Command: Dronie")
+                    is_dronie = True
 
 
 
@@ -446,6 +456,32 @@ while True:
         orbit_lost_frames += 1
         if orbit_lost_frames >= 8:
             prev_orbit = False
+
+
+    # --- dronie toggle (rising edge) --------------------------------------
+    # Unlike orbit, this is not a state to sit in - it is a scripted move that
+    # ends itself after dronie_duration and returns mode to "follow". So the
+    # gesture only ever STARTS it; there is nothing to toggle off.
+    if is_dronie and not prev_dronie:
+        if not follow_mode:
+            follow_mode = True
+            follower.reset()             # sets mode back to "follow"
+            follower.mode = "dronie"     # so this must come after
+        elif follower.mode != "dronie":
+            # Already following or orbiting - dronie takes over. Clearing the
+            # timestamp guarantees the ramp starts at t=0 rather than resuming
+            # a stale clock from a previous run.
+            follower.dronie_start_time = None
+            follower.mode = "dronie"
+
+    #grace period while toggling
+    if is_dronie:
+        dronie_lost_frames = 0
+        prev_dronie = True
+    else:
+        dronie_lost_frames += 1
+        if dronie_lost_frames >= 8:
+            prev_dronie = False
 
         #Check if follow mode has been activated
     if follow_mode:

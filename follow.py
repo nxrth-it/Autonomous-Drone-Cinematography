@@ -96,7 +96,21 @@ class PersonFollower:
         self.follow_state = "search"  # Initial state is search mode
         self.mode = "follow" #"follow" | "orbit", "dronie" |||| #Used to activate tricks and follow mode
         self.orbit_speed = 32 #cm/s speed lateral strafe
-        self.orbit_dir = 1 #1 is right (clockwise) -1 is left (counter clockwise)
+        self.orbit_dir = 1 #1 is right (clockwise) -1 is left (counter clockwise)  | Currently, there is no way for the user to change direction of orbit without changing code.
+
+        # --- dronie: scripted retreat-and-climb ------------------------------
+        # Speeds ramp exponentially: speed = start * e^(t/tau), capped.
+        # start is set at the Tello's ~12 response floor so the move is visible
+        # from the first frame - a plain e^t sits below that for 2.5s and the
+        # drone just hangs there before lurching.
+        self.dronie_start_time = None   # stamped on entry, None = not running
+        self.dronie_start = 12          # cm/s at t=0
+        self.dronie_tau = 1.5           # seconds - lower is more aggressive
+        self.dronie_max_back = 80       # cm/s cap, retreat
+        # Vertical is capped lower and bypasses pid_ud entirely, so max_updown
+        # can stay 0 and normal follow keeps altitude control disabled.
+        self.dronie_max_up = 40         # cm/s cap, climb
+        self.dronie_duration = 5        # seconds, then back to "follow"
 
     def reset(self):
         # Return the follower to the same state __init__ leaves it in, so a
@@ -113,6 +127,7 @@ class PersonFollower:
         self.follow_state = "search"
         self.last_seen_side = 1
         self.mode = "follow" #"follow" | "orbit", "dronie" |||| #Used to activate tricks and follow mode
+        self.dronie_start_time = None   # so a re-entered dronie starts from t=0
 
 
 
@@ -243,9 +258,29 @@ class PersonFollower:
                 left_right = self.orbit_speed * self.orbit_dir
 
             elif self.mode == "dronie":
-                #Rise at an increasing rate
-                #Move backwards at an increasing rate.
-                pass
+                # Scripted move, not a steady state: retreat and climb together
+                # with the speed ramping exponentially, then hand back to follow.
+                # The distance PID is OVERRIDDEN rather than added to - the whole
+                # point is to increase distance deliberately, so its correction
+                # would fight the shot.
+                if self.dronie_start_time is None:
+                    self.dronie_start_time = time.time()   # first frame only
+                    print("Dronie started.")
+
+                t = time.time() - self.dronie_start_time
+                ramp = self.dronie_start * np.exp(t / self.dronie_tau)
+
+                # Backward, hence negative. up_down is assigned directly, which
+                # bypasses pid_ud's output_limit (max_updown) - so normal follow
+                # can keep altitude control switched off while this still climbs.
+                forward_back = -min(ramp, self.dronie_max_back)
+                up_down = min(ramp * 0.5, self.dronie_max_up)
+
+                if t >= self.dronie_duration:
+                    self.mode = "follow"
+                    self.dronie_start_time = None
+                    print("Dronie complete.")
+                
                     
 
             #print(f"yaw={yaw_cor:.1f}  fwd={forward_back:.1f}  ud={up_down:.1f}  box_h={box_h:.1f}  lost={self.lost_frames}")
