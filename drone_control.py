@@ -244,9 +244,7 @@ while True:
 
                 elif predicted_label == "point_down":
                      #disable follow mode if it was enabled
-                    #rc_up_down = -30
-                    #use  the swipe instead
-                    pass
+                    rc_up_down = -30
                     
 
 
@@ -332,12 +330,12 @@ while True:
                     # the finger is fully extended. Anchoring on that first
                     # half-made frame stores a bent finger as "centre", so the
                     # finger simply finishing its extension afterwards reads as
-                    # a large upward swipe - which then wins the dy-vs-dx test
+                    # a large upward swipe which then wins the dy-vs-dx test
                     # on every frame and pins up_down for the whole hold.
                     # Waiting for a confident frame anchors the settled pose.
                     # swipe_control returns zeros while the anchor is still
                     # None, so nothing moves until there is a good one.
-                    if swipe_anchor is None and result.gestures[0][0].score >= 0.85:
+                    if swipe_anchor is None and result.gestures[0][0].score >= 0.6:
                         swipe_anchor = finger_rel_pos
                         print(f"Swipe anchor set at score {result.gestures[0][0].score:.2f}")
 
