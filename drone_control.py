@@ -245,6 +245,7 @@ while True:
                 elif predicted_label == "point_down":
                      #disable follow mode if it was enabled
                     #rc_up_down = -30
+                    #use  the swipe instead
                     pass
                     
 
