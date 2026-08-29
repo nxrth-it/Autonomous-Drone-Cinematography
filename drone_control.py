@@ -318,15 +318,28 @@ while True:
 
                 elif gesture_name == "Pointing_Up":
                     print("Command: Pointing Up Action")
-                    
+
                     is_actively_swiping = True
 
                     # First frame of this gesture: remember where the
                     # fingertip started. Every later frame is measured
                     # against that fixed point, so holding a steady offset
                     # keeps producing movement instead of resetting to zero.
-                    if swipe_anchor is None:
+                    #
+                    # The score gate matters more than it looks. MediaPipe
+                    # starts reporting Pointing_Up at around 0.5 while the hand
+                    # is still forming the gesture, and settles near 0.92 once
+                    # the finger is fully extended. Anchoring on that first
+                    # half-made frame stores a bent finger as "centre", so the
+                    # finger simply finishing its extension afterwards reads as
+                    # a large upward swipe - which then wins the dy-vs-dx test
+                    # on every frame and pins up_down for the whole hold.
+                    # Waiting for a confident frame anchors the settled pose.
+                    # swipe_control returns zeros while the anchor is still
+                    # None, so nothing moves until there is a good one.
+                    if swipe_anchor is None and result.gestures[0][0].score >= 0.85:
                         swipe_anchor = finger_rel_pos
+                        print(f"Swipe anchor set at score {result.gestures[0][0].score:.2f}")
 
                     # Calculate only - the yaw still has to be mixed in below.
                     rc_left_right, rc_forward_back, rc_up_down = swipe_control(
