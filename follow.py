@@ -217,7 +217,7 @@ class PersonFollower:
             # and negating one side made the "too close" case command forward,
             # straight at the person.
             forwb_err = (self.target_height_frac - forwb) / self.target_height_frac
-            print("forwb_error is", forwb_err)
+            #print("forwb_error is", forwb_err)
             #divide by self.target_height_frac for scaling as a fraction of the setpoint. (Proportional, kind of)
 
             if forwb >= 0.98:  #for this case, values between 0.96 and 0.99 will be in a deadzone. No movement at all. 

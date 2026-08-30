@@ -255,7 +255,7 @@ while True:
 
                 elif predicted_label == "three_fingers":
                     #follow the person function call
-                    print("Command: Follow Person")
+                    #print("Command: Follow Person")
                     toggle_follow = True
 
 
@@ -270,7 +270,7 @@ while True:
 
                 elif predicted_label == "L_sign":
                     #orbit function call
-                    print("Command: Orbit")
+                    #print("Command: Orbit")
                     is_orbit = True
 
                     
@@ -313,7 +313,7 @@ while True:
                     #DRONIE !
                     # Only report the gesture. The toggle happens at top level,
                     # because this branch does not run on every frame.
-                    print("Command: Dronie")
+                    #print("Command: Dronie")
                     is_dronie = True
 
 
@@ -353,12 +353,13 @@ while True:
 
 
                 elif gesture_name == "Thumb_Down":
-                    print("Command: Thumb Down Action")
+                    pass
+                    #print("Command: Thumb Down Action")
                     
                     #d.send_rc_control(0,0,0,0)
 
                 elif gesture_name == "Thumb_Up":
-                    print("Command: Thumb Up Action")
+                    #print("Command: Thumb Up Action")
                     # Only report that the gesture was seen. The toggle and the
                     # frame writing both happen at top level - this branch does
                     # not run on every frame, so neither can live here.
@@ -367,14 +368,15 @@ while True:
                 elif gesture_name == "Victory":
 
                     if time.time() - last_photo_time >= 3:
-                        print("Command: Take Picture. Say Cheese!")
+                        #print("Command: Take Picture. Say Cheese!")
                         t = "photo_" + timestamp() + ".jpg"
                         d.capture(filename=t)
                         last_photo_time = time.time()
                     #don't disable follow mode to take picture during following
 
                 elif gesture_name == "ILoveYou":
-                    print("Command: I Love You Action")
+                    #print("Command: I Love You Action")
+                    pass
                     
                     
                 # else:
