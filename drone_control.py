@@ -121,6 +121,9 @@ vid_writer = None
 thumb_up_prev = False
 thumb_up_lost_frames = 0
 
+
+gesture_name = None
+
 #create CUDA context and upload model weights to GPU memory. (Faster usage later + no lag)
 #np.zeroes = array with 675 rows 900 columns with 3 values per pixel
 #use uint8 (unsigned 8bit integer) for pixel format
@@ -174,6 +177,7 @@ while True:
     hand_center_x = None      # wrist x  -> drives the yaw centring
     finger_rel_pos = None     # tip-wrist -> drives the swipe
     is_thumb_up = False
+
 
     toggle_follow = False  # Reset toggle each frame
     allowed_f_gestures = ("three_fingers", "Closed_Fist", "Victory", "Open_Palm", "L_sign")
@@ -343,6 +347,8 @@ while True:
                     rc_left_right, rc_forward_back, rc_up_down = swipe_control(
                         finger_rel_pos, swipe_anchor, threshold=0.017, rc_speed=30
                     )
+                    rc_yaw = yaw_centering(hand_center_x, deadzone=0.12, max_yaw_speed=40)
+                    
 
 
 
@@ -412,15 +418,15 @@ while True:
             thumb_up_prev = False
     
                                 
-
+    print("is actively swiping", is_actively_swiping, "gesture name", gesture_name)
     # --- add yaw then send exactly one command 
     if is_actively_swiping:
         # Only auto-rotate while person is actively driving it, so it doesn't
         # quietly spin on the spot when person is not paying attention to it.
-        rc_yaw = yaw_centering(hand_center_x, deadzone=0.12, max_yaw_speed=40)
         swipe_lost_frames = 0
+        pass
     else:
-        # Gesture gone (or never there) - remove anchor so the next swipe
+        # Gesture gone. remove anchor so the next swipe
         # starts fresh from wherever the finger is then, rather than being
         # measured against a stale point from several seconds ago.
         swipe_lost_frames += 1

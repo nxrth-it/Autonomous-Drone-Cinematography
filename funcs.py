@@ -92,7 +92,7 @@ def swipe_control(curr_rel_pos, anchor_rel_pos, threshold=0.04, rc_speed=30):
     return left_right, forward_backward, up_down
 
 
-def yaw_centering(hand_center_x, deadzone=0.12, max_yaw_speed=40):
+def yaw_centering(hand_center_x, deadzone=0.12, max_yaw_speed=65):
     """
     Works out how fast to spin the drone so the person stays centred in shot.
 
@@ -124,6 +124,9 @@ def yaw_centering(hand_center_x, deadzone=0.12, max_yaw_speed=40):
         yaw = max_yaw_speed
     elif yaw < -max_yaw_speed:
         yaw = -max_yaw_speed
+
+    print("Current yaw error", error)
+    print("Current yaw:", yaw)
 
     return yaw
 
