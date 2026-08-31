@@ -106,6 +106,15 @@ prev_dronie = False
 is_dronie = False
 dronie_lost_frames = 0
 stall_frames = 0
+# Set when the follower enters orbit, cleared when it leaves. The stall check
+# needs it to know how long the orbit has been running.
+orbit_start_time = None
+
+# Landing is the one command that cannot be undone in the air, so it is the
+# only gesture that must be HELD rather than tapped. Wall-clock, not frames -
+# "3 seconds" has to mean 3 seconds regardless of how fast the loop runs.
+flat_palm_start = None
+flat_palm_lost_frames = 0
 
 
 
@@ -166,6 +175,7 @@ while True:
     is_actively_swiping = False
     is_orbit = False
     is_dronie = False
+    is_flat_palm = False
     # Every frame build up ONE set of RC velocities and send a single
     # rc command at the bottom of the loop. The Tello's rc carries all
     # four channels at once, so two separate send_rc_control() calls would
@@ -260,13 +270,12 @@ while True:
 
 
 
-                   #add frame counter to switch follow_mode off after a certain number of frames 
                 elif predicted_label == "flat_palm":
-                    #tello.land()
-                    print("Command: Land")
-                    follower.reset()  # Reset the follower state when landing
-                    
-                    command(d.land, "Landing")
+                    # Only report the gesture. The 3 second hold is timed at top
+                    # level, because this branch does not run on every frame -
+                    # a timer living here would be reset by any frame where the
+                    # custom model dipped below its confidence gate.
+                    is_flat_palm = True
 
                 elif predicted_label == "L_sign":
                     #orbit function call
@@ -503,6 +512,37 @@ while True:
         if dronie_lost_frames >= 8:
             prev_dronie = False
 
+
+    # --- land: flat palm HELD for 3 seconds --------------------------------
+    # Every other gesture fires on a rising edge, which is fine for something
+    # reversible. Landing is not - a single misread frame used to put the drone
+    # on the ground mid-shot. Requiring a sustained hold means a one-frame
+    # flicker can no longer reach the motors.
+    #
+    # The 8 frame tolerance mirrors the other gestures: the model dropping out
+    # for a fraction of a second must not restart the count, or the timer can
+    # never finish while the hand is at filming distance.
+    if is_flat_palm:
+        flat_palm_lost_frames = 0
+        if flat_palm_start is None:
+            flat_palm_start = time.time()
+            print("Landing in 3s - keep holding flat palm")
+
+        held = time.time() - flat_palm_start
+        cv2.putText(display_frame, f"LANDING IN {max(0.0, 3 - held):.1f}s", (20, 170),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 2)
+
+        if held >= 3:
+            print("Command: Land")
+            follow_mode = False        # stop steering before it descends
+            follower.reset()
+            command(d.land, "Landing")
+            flat_palm_start = None
+    else:
+        flat_palm_lost_frames += 1
+        if flat_palm_lost_frames >= 8:
+            flat_palm_start = None     # gesture genuinely released - start over
+
         #Check if follow mode has been activated
     if follow_mode:
         # update() now always returns the same five things, so this unpack is
@@ -530,21 +570,36 @@ while True:
                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
 
         if follower.follow_state == "land":
-            # Clear the velocities so the single send at the bottom of the loop
-            # issues a stop rather than the last search sweep.
+            # Losing the target no longer lands the drone. Landing is now a
+            # deliberate act only - flat palm held for 3 seconds - so a failed
+            # search hands control back and HOVERS instead of putting the
+            # aircraft on whatever happens to be underneath it.
             rc_left_right, rc_forward_back, rc_up_down, rc_yaw = 0, 0, 0, 0
-            follow_mode = False          # stop steering BEFORE it descends
-            # Threaded wrapper, not d.land() directly - a bare land() blocks the
-            # loop for several seconds, freezing the video and killing q and f.
-            # is_busy() then holds off the rc stream while it descends.
-            command(d.land, "Landing")
-            print("Follow mode: False (landing)")
-            follower.reset()  # Reset the follower state when landing
+            follow_mode = False
+            print("Follow mode: False (target lost - hovering)")
+            follower.reset()
 
 
     #safety to prevent drone from continuously crashing into objects while orbiting
     #Prevent speed commands that are very close to 0cm/s from triggering
-    if follow_mode and abs(rc_left_right) > 15 and abs(d.get_speed_y()) < 5:
+    #
+    # SPIN-UP GRACE. The check compares a command sent this instant against a
+    # speed the aircraft cannot possibly have reached yet. The Tello has to
+    # build attitude before it translates at all, and vgy only refreshes at
+    # about 10Hz, so a perfectly healthy orbit genuinely reports 0-4 for its
+    # first several frames. With the counter free-running that reached 10
+    # after roughly 500ms - every attempt, identically - and cancelled the
+    # orbit before the drone had finished accelerating.
+    # Only judge an orbit once it has had time to actually get moving.
+    if follower.mode == "orbit":
+        if orbit_start_time is None:
+            orbit_start_time = time.time()
+    else:
+        orbit_start_time = None
+
+    orbit_settled = orbit_start_time is not None and (time.time() - orbit_start_time) > 1.5
+
+    if follow_mode and orbit_settled and abs(rc_left_right) > 15 and abs(d.get_speed_y()) < 5:
         stall_frames += 1
     else:
         stall_frames = 0

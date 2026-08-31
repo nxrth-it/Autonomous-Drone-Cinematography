@@ -311,7 +311,11 @@ class PersonFollower:
 
                 elif time.time() - self.search_start > 7:
                     self.follow_state = "land"
-                    print("No person detected for 7 seconds. Landing the drone.")
+                    # The state is still called "land" because it is the
+                    # terminal state of the search, but drone_control.py now
+                    # only disengages follow mode and hovers - landing is a
+                    # deliberate gesture, never an automatic consequence.
+                    print("No person detected for 7 seconds. Giving up - hovering.")
 
                 if self.follow_state == "search":
                     yaw_cor = 32 * self.last_seen_side  # sweep to look for them
