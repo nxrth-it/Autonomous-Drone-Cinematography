@@ -9,7 +9,7 @@ A real-time, low-latency autonomous flight control system for the **DJI Tello** 
 - **Maneuvers using Gestures**: Execute maneuvers using only gestures.
 - **Screenless Control**: Control your drone's movement without using a controller or device. Use just your hands!
 - **Automatic Following**: Use a gesture to get your drone to follow you around!
-- - **⚠️ Tello Drones do not contain any sideways/backwards  sensors and is not able to avoid collision with objects!**
+**⚠️ Tello Drones do not contain any sideways/backwards  sensors and is not able to avoid collision with objects!**
 ---
 
 ## ⚙️ Supported Gestures & Flight Controls
