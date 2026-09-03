@@ -116,6 +116,15 @@ orbit_start_time = None
 flat_palm_start = None
 flat_palm_lost_frames = 0
 
+# --- automatic abort limits ----------------------------------------------
+# Checked every frame and acted on straight away. The Tello does protect
+# itself eventually, but its warning is one line in a terminal that scrolls
+# past several times a second - so the program stops outright instead, and
+# the reason is the last thing left on screen.
+BATTERY_ABORT = 15     # percent, abort at or below
+TEMP_ABORT    = 85     # degrees C, abort at or above (hottest onboard sensor)
+abort_reason  = None
+
 
 
 print("Flight stream live. Press 'q' to disconnect and land.")
@@ -162,6 +171,50 @@ while True:
     # would only record on frames where that gesture happened to be recognised.
     if vid_writer is not None:
         vid_writer.write(display_frame)
+
+    # --- abort on low battery / high temperature --------------------------
+    # Both read the cached state packet rather than sending a command, so this
+    # costs nothing per frame. Wrapped because get_state_field raises when a
+    # field has not arrived yet, and a dropped packet must not kill the loop.
+    try:
+        battery = d.get_battery()
+        temperature = d.get_highest_temperature()
+    except Exception:
+        battery, temperature = None, None
+
+    if battery is not None and battery <= BATTERY_ABORT:
+        abort_reason = f"BATTERY {battery}% - AT OR BELOW {BATTERY_ABORT}% LIMIT"
+    elif temperature is not None and temperature >= TEMP_ABORT:
+        abort_reason = f"TEMPERATURE {temperature}C - AT OR ABOVE {TEMP_ABORT}C LIMIT"
+
+    if abort_reason:
+        # Deliberately loud. A single print would be lost inside the gesture
+        # debug stream, which is the whole reason this check exists.
+        print("\n" + "=" * 62)
+        print("  ABORTING FLIGHT:", abort_reason)
+        print("=" * 62 + "\n")
+
+        cv2.putText(display_frame, "ABORTING", (40, 300),
+                    cv2.FONT_HERSHEY_SIMPLEX, 2.0, (0, 0, 255), 5)
+        cv2.putText(display_frame, abort_reason, (40, 355),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
+        cv2.imshow('Drone View', display_frame)
+        cv2.waitKey(2000)          # hold the reason on screen before the window closes
+
+        if vid_writer is not None:
+            vid_writer.release()   # without release() the file has no header and will not play
+            vid_writer = None
+
+        # Land rather than simply exiting - dropping out of the loop would
+        # leave the aircraft airborne until its own failsafe times out.
+        # Wrapped because land() raises if the drone is already on the ground.
+        try:
+            d.send_rc_control(0, 0, 0, 0)
+            d.land()
+        except Exception as e:
+            print(f"Land during abort failed: {e}")
+        break
+
     rgb_frame = frame #mediapipe raw rgb frame
     timestamp_ms = int(time.time() * 1000)
 
@@ -293,7 +346,7 @@ while True:
             elif result.gestures and result.hand_landmarks: #if custom hasn't detected a gesture, check if mp has a valid gesture
                 #mediapipe gesture recognition
                 gesture_name = result.gestures[0][0].category_name
-                print(f"DEBUG: MP GESTURE: {gesture_name}, score: {result.gestures[0][0].score:.2f}")
+                #print(f"DEBUG: MP GESTURE: {gesture_name}, score: {result.gestures[0][0].score:.2f}")
                 cv2.putText(display_frame, f"Gesture: {gesture_name}", (10, 50), 
                             cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
@@ -328,7 +381,7 @@ while True:
 
 
                 elif gesture_name == "Pointing_Up":
-                    print("Command: Pointing Up Action")
+                    #print("Command: Pointing Up Action")   # fired every frame - blocked the loop
 
                     is_actively_swiping = True
 
@@ -352,11 +405,25 @@ while True:
                         swipe_anchor = finger_rel_pos
                         print(f"Swipe anchor set at score {result.gestures[0][0].score:.2f}")
 
+                    # The threshold MUST be scaled by the hand's apparent size.
+                    # finger_rel_pos is in frame-normalised units, so the hand
+                    # shrinks as the person backs away - a fixed number silently
+                    # demands a bigger and bigger tilt with distance. At a raw
+                    # 0.09 the swipe needs a 37 degree tilt at 1m and becomes
+                    # mathematically impossible past about 1.6m, which is why it
+                    # was recognising the gesture and then doing nothing.
+                    # Scaling by the anchor's own length cancels distance out,
+                    # so the trigger is a fixed ANGLE of wrist tilt at any range.
+                    anchor_scale = np.hypot(swipe_anchor[0], swipe_anchor[1]) if swipe_anchor else 0.2
+
                     # Calculate only - the yaw still has to be mixed in below.
                     rc_left_right, rc_forward_back, rc_up_down = swipe_control(
-                        finger_rel_pos, swipe_anchor, threshold=0.017, rc_speed=30
+                        finger_rel_pos, swipe_anchor, threshold=0.09 * anchor_scale, rc_speed=30
                     )
-                    rc_yaw = yaw_centering(hand_center_x, deadzone=0.12, max_yaw_speed=40)
+                    # Tighter arc: correct sooner (smaller deadzone) and harder
+                    # (higher ceiling), so the drone rotates to keep the person
+                    # framed instead of translating out around them.
+                    rc_yaw = yaw_centering(hand_center_x, deadzone=0.06, max_yaw_speed=60)
                     
 
 
@@ -429,7 +496,7 @@ while True:
             thumb_up_prev = False
     
                                 
-    print("is actively swiping", is_actively_swiping, "gesture name", gesture_name)
+    #print("is actively swiping", is_actively_swiping, "gesture name", gesture_name)
     # --- add yaw then send exactly one command 
     if is_actively_swiping:
         # Only auto-rotate while person is actively driving it, so it doesn't
@@ -620,6 +687,29 @@ while True:
 
 
 
+
+    # --- capture status overlay -------------------------------------------
+    # Drawn last, so it lands AFTER the video write at the top of the loop -
+    # the indicator must never end up baked into the recorded footage.
+    fh, fw = display_frame.shape[:2]
+
+    if vid_writer is not None:
+        # Blinking, so it reads as live rather than as a static label. The dot
+        # toggles twice a second: int(t*2) flips parity every 0.5s.
+        if int(time.time() * 2) % 2 == 0:
+            cv2.circle(display_frame, (fw - 148, 34), 11, (0, 0, 255), -1)
+        cv2.putText(display_frame, "REC", (fw - 128, 44),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 2)
+
+    # Photo has no lasting state to show, so the confirmation is timed off the
+    # same stamp the 3 second cooldown already uses - no extra variable needed.
+    if time.time() - last_photo_time < 1.5:
+        cv2.putText(display_frame, "PHOTO SAVED", (fw - 260, 84),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.85, (255, 255, 255), 2)
+
+    if battery is not None:
+        cv2.putText(display_frame, f"BAT {battery}%  {temperature}C", (20, fh - 20),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (200, 200, 200), 2)
 
     cv2.imshow('Drone View', display_frame)
     key = cv2.waitKey(1) & 0xFF
