@@ -122,7 +122,10 @@ flat_palm_lost_frames = 0
 # past several times a second - so the program stops outright instead, and
 # the reason is the last thing left on screen.
 BATTERY_ABORT = 15     # percent, abort at or below
-TEMP_ABORT    = 85     # degrees C, abort at or above (hottest onboard sensor)
+# 85 was too low. Flight footage from 3 Sep shows this airframe idling at
+# 78C and creeping to 80C over ten minutes - only 5C of headroom, so a longer
+# session or a warmer room would have aborted a perfectly healthy flight.
+TEMP_ABORT    = 90     # degrees C, abort at or above (hottest onboard sensor)
 abort_reason  = None
 
 
