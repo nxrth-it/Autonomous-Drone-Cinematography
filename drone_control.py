@@ -383,7 +383,7 @@ while True:
 
 
                 elif gesture_name == "Open_Palm":
-                    #DRONIE !
+                    #DRONIE!
                     # Only report the gesture. The toggle happens at top level,
                     # because this branch does not run on every frame.
                     #print("Command: Dronie")
