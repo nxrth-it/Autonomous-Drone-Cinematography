@@ -142,6 +142,14 @@ thumb_up_lost_frames = 0
 
 gesture_name = None
 
+# --- loop rate meter -------------------------------------------------------
+# perf_counter rather than time(): it is monotonic and higher resolution, so a
+# system clock adjustment mid-flight cannot produce a negative interval.
+# fps_smooth starts at 0 purely as a "no reading yet" marker - the first real
+# sample seeds it directly rather than letting it ramp up from zero.
+last_loop_time = time.perf_counter()
+fps_smooth = 0.0
+
 #create CUDA context and upload model weights to GPU memory. (Faster usage later + no lag)
 #np.zeroes = array with 675 rows 900 columns with 3 values per pixel
 #use uint8 (unsigned 8bit integer) for pixel format
@@ -710,6 +718,34 @@ while True:
     if battery is not None:
         cv2.putText(display_frame, f"BAT {battery}%  {temperature}C", (20, fh - 20),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (200, 200, 200), 2)
+
+    # --- loop rate ---------------------------------------------------------
+    # Measured here, at the same point every iteration, so the interval spans
+    # exactly one full pass of the loop. Frames skipped by the "invalid frame"
+    # continue near the top fold into the NEXT reading, which is correct - a
+    # stall should show up as a low number rather than being hidden.
+    now_perf = time.perf_counter()
+    loop_dt = now_perf - last_loop_time
+    last_loop_time = now_perf
+
+    # Guarded divide: two iterations inside a single clock tick would give 0.
+    if loop_dt > 0:
+        inst_fps = 1.0 / loop_dt
+        # Smoothed, because raw per-frame FPS swings far too much to read while
+        # flying. Seed on the first sample so it does not ramp from zero.
+        fps_smooth = inst_fps if fps_smooth == 0.0 else (fps_smooth * 0.9 + inst_fps * 0.1)
+
+    # Colour-coded so the number can be read at a glance instead of parsed:
+    # green is healthy, amber is degraded, red means tracking is starved.
+    if fps_smooth >= 20:
+        fps_colour = (120, 220, 120)
+    elif fps_smooth >= 12:
+        fps_colour = (80, 200, 240)
+    else:
+        fps_colour = (80, 80, 255)
+
+    cv2.putText(display_frame, f"{fps_smooth:.0f} FPS", (20, fh - 45),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.6, fps_colour, 2)
 
     cv2.imshow('Drone View', display_frame)
     key = cv2.waitKey(1) & 0xFF
