@@ -41,5 +41,4 @@ A real-time, low-latency autonomous flight control system for the **DJI Tello** 
 ### 🚀 Installation
 **Guide Coming Soon. For now, please see requirements.txt for package installation.**
 
-### PLEASE DO NOT USE THIS CODE WITHOUT PERMISSION.
 **Any enquiries please email me at northitti@gmail.com
