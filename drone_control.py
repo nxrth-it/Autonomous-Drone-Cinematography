@@ -66,6 +66,7 @@ options = vision.GestureRecognizerOptions(
     base_options=base_options,
     running_mode=vision.RunningMode.VIDEO #not using live stream mode since processing it as 1 frame at a time.
     #result_callback=lambda result, output_image, timestamp_ms: update_result(result)
+    
 )
 recognizer = vision.GestureRecognizer.create_from_options(options)
 
