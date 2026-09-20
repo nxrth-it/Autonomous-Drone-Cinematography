@@ -64,9 +64,9 @@ with open(LABEL_PATH, 'rb') as f:
 base_options = python.BaseOptions(model_asset_path='models/gesture_recognizer.task')
 options = vision.GestureRecognizerOptions(
     base_options=base_options,
-    running_mode=vision.RunningMode.VIDEO #not using live stream mode since processing it as 1 frame at a time.
+    running_mode=vision.RunningMode.VIDEO, #not using live stream mode since processing it as 1 frame at a time.
     #result_callback=lambda result, output_image, timestamp_ms: update_result(result)
-    
+    num_hands = 2
 )
 recognizer = vision.GestureRecognizer.create_from_options(options)
 
@@ -241,6 +241,7 @@ while True:
     is_orbit = False
     is_dronie = False
     is_flat_palm = False
+    is_two_hands_up = False
     # Every frame build up ONE set of RC velocities and send a single
     # rc command at the bottom of the loop. The Tello's rc carries all
     # four channels at once, so two separate send_rc_control() calls would
@@ -254,21 +255,43 @@ while True:
     is_thumb_up = False
 
 
+
     toggle_follow = False  # Reset toggle each frame
     allowed_f_gestures = ("three_fingers", "Closed_Fist", "Victory", "Open_Palm", "L_sign")
 
 
     if result.hand_landmarks:
         #loop through landmarks
-        for hand_landmarks in result.hand_landmarks:
-            #(DRAWING HAND LANDMARKS)
+        # draw every hand found, including ones about to be ignored, so it is
+        # visible on screen what mediapipe is actually resolving
+        for hl in result.hand_landmarks:
             drawing_utils.draw_landmarks(
                 display_frame,
-                hand_landmarks,
+                hl,
                 HandLandmarksConnections.HAND_CONNECTIONS,
                 drawing_styles.get_default_hand_landmarks_style(),
                 drawing_styles.get_default_hand_connections_style()
             )
+
+        # Choose the highest hand
+        #  y increase as actual height decrease, so the smallest y is highest on screen. 
+        # a deliberate gesture needs to be raised, a hand hanging at the side is lower. 
+        cmd_idx, _ = min(enumerate(result.hand_landmarks), key=lambda p: p[1][0].y)
+
+        # only command that reads every hand rather than just the command hand
+        # both must be pointing up and both must be raised.
+        # the height bar is what stops one deliberate hand plus one dangling hand from reading as a climb. 0.65 can tune.
+        raised_pointing = 0
+        for i, hl in enumerate(result.hand_landmarks):
+            #prevent index out of range if  bad data returned + check how many hands are pointing up with this gesture + allow only if wrist is in upper 65% of frame
+            if i < len(result.gestures) and result.gestures[i][0].category_name == "Pointing_Up" and result.gestures[i][0].score >= 0.6 and hl[0].y < 0.65:
+                raised_pointing += 1
+        is_two_hands_up = raised_pointing >= 2
+
+        # everything below runs on the command hand only, including the custom
+        # keras model, which would otherwise classify both hands every frame and
+        # let the dangling one win because the last iteration overwrites the first
+        for hand_landmarks in (result.hand_landmarks[cmd_idx],):
     #----------------------------------------------------------------------
             #Normalizing and setting up data for the custom gesture recognition model
             # Translation Invariance: Shift coordinates relative to wrist origin (normalized so position of gesture in frame doesn't get taken into account.)
@@ -355,9 +378,9 @@ while True:
                     
                     command(d.takeoff, "Takeoff")
 
-            elif result.gestures and result.hand_landmarks: #if custom hasn't detected a gesture, check if mp has a valid gesture
+            elif len(result.gestures) > cmd_idx and result.hand_landmarks: #if custom hasn't detected a gesture, check if mp has a valid gesture
                 #mediapipe gesture recognition
-                gesture_name = result.gestures[0][0].category_name
+                gesture_name = result.gestures[cmd_idx][0].category_name
                 #print(f"DEBUG: MP GESTURE: {gesture_name}, score: {result.gestures[0][0].score:.2f}")
                 cv2.putText(display_frame, f"Gesture: {gesture_name}", (10, 50), 
                             cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
@@ -413,9 +436,9 @@ while True:
                     # Waiting for a confident frame anchors the settled pose.
                     # swipe_control returns zeros while the anchor is still
                     # None, so nothing moves until there is a good one.
-                    if swipe_anchor is None and result.gestures[0][0].score >= 0.6:
+                    if swipe_anchor is None and result.gestures[cmd_idx][0].score >= 0.6:
                         swipe_anchor = finger_rel_pos
-                        print(f"Swipe anchor set at score {result.gestures[0][0].score:.2f}")
+                        print(f"Swipe anchor set at score {result.gestures[cmd_idx][0].score:.2f}")
 
                     # The threshold MUST be scaled by the hand's apparent size.
                     # finger_rel_pos is in frame-normalised units, so the hand
@@ -521,7 +544,14 @@ while True:
         # measured against a stale point from several seconds ago.
         swipe_lost_frames += 1
         if swipe_lost_frames >= 10:
-            swipe_anchor = None 
+            swipe_anchor = None
+
+    # two-handed climb overrides the lateral swipe: with both hands raised
+    # there is no command hand steering, and running both would fight
+    if is_two_hands_up:
+        rc_up_down = 30
+        rc_left_right = 0
+        rc_forward_back = 0
 
 
 
