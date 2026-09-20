@@ -72,7 +72,7 @@ recognizer = vision.GestureRecognizer.create_from_options(options)
 #=========================================================================
 #Initialize drone and start video stream
 d = drone(enable_mission_pad=False, show_cam=False)
-d.set_video_resolution(Tello.RESOLUTION_720P)
+d.set_video_resolution(Tello.RESOLUTION_720P) #can change back to 720P
 d.set_video_bitrate(Tello.BITRATE_3MBPS)
 d.streamon()
 time.sleep(3.5)
