@@ -464,10 +464,8 @@ while True:
 
 
                 elif gesture_name == "Thumb_Down":
+                    #return to user
                     pass
-                    #print("Command: Thumb Down Action")
-                    
-                    #d.send_rc_control(0,0,0,0)
 
                 elif gesture_name == "Thumb_Up":
                     #print("Command: Thumb Up Action")

@@ -227,11 +227,9 @@ class PersonFollower:
             #print("Current forward speed: ", forward_back)
 
             # --- dead band compensation ------------------------------------
-            # The Tello ignores rc magnitudes below roughly 12 - its position
-            # hold simply absorbs them and the aircraft does not move. Flights
-            # showed the controller commanding -8 for dozens of frames straight
-            # while forwb never changed: awake, correct, and completely
-            # inaudible to the airframe.
+            # The Tello ignores rc command below roughly 12 (tested) - drone does not move. Flights
+            # showed the controller commanding -8 for many frames
+            # while forwb never changed
             #
             # hold still when close to the setpoint, but if the
             # controller wants motion at all, ask for enough to actually
@@ -280,6 +278,7 @@ class PersonFollower:
                     self.mode = "follow"
                     self.dronie_start_time = None
                     print("Dronie complete.")
+
                 
                     
 
